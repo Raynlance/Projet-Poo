@@ -8,7 +8,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 
-public class MainGame extends ApplicationAdapter {
+public class Main extends ApplicationAdapter {
     private ShapeRenderer shapeRenderer;
     
     // Giraffe Position
