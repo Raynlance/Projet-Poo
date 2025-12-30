@@ -308,19 +308,19 @@ public class MenuScreen implements Screen {
         }
         
         font.setColor(blueColor);
-        String subtitle = "La bataille la plus delicieuse!";
+        String subtitle = "LET'S FIGHT";
         layout.setText(font, subtitle);
         font.draw(batch, subtitle, (VIRTUAL_WIDTH - layout.width) / 2, titleY - 60);
         
         font.setColor(Color.WHITE);
-        String newGameText = "NOUVELLE PARTIE";
+        String newGameText = "NEW GAME";
         layout.setText(font, newGameText);
         float newGameTextX = newGameButton.x + (newGameButton.width - layout.width) / 2;
         float newGameTextY = newGameButton.y + (newGameButton.height + layout.height) / 2;
         font.draw(batch, newGameText, newGameTextX, newGameTextY);
         
         font.setColor(Color.BLACK);
-        String quitText = "QUITTER";
+        String quitText = "BYE BYE!";
         layout.setText(font, quitText);
         float quitTextX = quitButton.x + (quitButton.width - layout.width) / 2;
         float quitTextY = quitButton.y + (quitButton.height + layout.height) / 2;
