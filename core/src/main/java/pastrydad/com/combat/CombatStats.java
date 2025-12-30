@@ -54,7 +54,7 @@ public class CombatStats {
         );
     }
     
-    // getters
+    // getters et setters
     public String getUnitType() {
         return unitType;
     }
@@ -70,11 +70,28 @@ public class CombatStats {
     public int getTotalDamageTaken() {
         return totalDamageTaken;
     }
+        public void setKills(int kills) {
+        this.kills = kills;
+    }
+
+    public void setDeaths(int deaths) {
+        this.deaths = deaths;
+    }
+
+    public void setTotalDamageDealt(int totalDamageDealt) {
+        this.totalDamageDealt = totalDamageDealt;
+    }
+
+    public void setTotalDamageTaken(int totalDamageTaken) {
+        this.totalDamageTaken = totalDamageTaken;
+    }
+
     
     @Override
     public String toString() {
         return getSummary();
     }
+
 
 
 }
