@@ -47,7 +47,7 @@ public abstract class Unit {
     
     
     // Constructeur de base pour une unité
-
+    @SuppressWarnings("OverridableMethodCallDuringObjectConstruction")
     public Unit(float startX, float startY, boolean isPlayer) {
         this.position = new Vector2(startX, startY);
         this.targetPosition = new Vector2(startX, startY);
