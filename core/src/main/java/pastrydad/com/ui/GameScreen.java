@@ -189,16 +189,16 @@ public class GameScreen implements Screen {
         shapeRenderer.end();
         
         
-        float healthBarX = 70;
-        float healthBarY = VIRTUAL_HEIGHT - 35;
+        float healthBarX = 90;
+        float healthBarY = VIRTUAL_HEIGHT - 50;
         float healthBarWidth = 180;
-        float healthBarHeight = 22;
+        float healthBarHeight = 20;
         
         batch.begin();
         
         // Icône cœur ou symbole
         if (useIcons && heartIcon != null) {
-            batch.draw(heartIcon, healthBarX - 50, healthBarY - 5, 32, 32);
+            batch.draw(heartIcon, healthBarX - 35, healthBarY - 5, 32, 32);
         } else {
             hudFont.setColor(new Color(1f, 0.2f, 0.4f, 1f));
             hudFont.draw(batch, "♥", healthBarX - 40, healthBarY + 20);
@@ -229,7 +229,7 @@ public class GameScreen implements Screen {
         // Texte vie
         hudFont.setColor(Color.WHITE);
         String healthText = playerHealth + "/" + maxHealth;
-        hudFont.draw(batch, healthText, healthBarX + 45, healthBarY + 18);
+        hudFont.draw(batch, healthText, healthBarX + 45, healthBarY + 20);
         
         // === SCORE ===
         float scoreX = 280;
