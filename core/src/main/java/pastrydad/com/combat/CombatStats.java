@@ -3,19 +3,19 @@ package pastrydad.com.combat;
 
 
 public class CombatStats {
-    // Type d'unité */
+    // Type d'unité 
     private final String unitType;
     
-    // Nombre de kills */
+    // Nombre de kills 
     private int kills;
     
     // Nombre de morts
     private int deaths;
     
-    // Dégâts totaux infligés */
+    // Dégâts totaux infligés 
     private int totalDamageDealt;
     
-    // Dégâts totaux reçus */
+    // Dégâts totaux reçus 
     private int totalDamageTaken;
     
     public CombatStats(String unitType, int kills, int deaths, 

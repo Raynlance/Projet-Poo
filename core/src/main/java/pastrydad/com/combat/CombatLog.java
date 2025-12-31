@@ -5,28 +5,28 @@ import java.util.Date;
 
 public class CombatLog {
 
-     /** Type de l'unité attaquante */
+     // Type de l'unité attaquante 
     private final String attackerType;
     
-    /** Type de l'unité défenseure */
+    // Type de l'unité défenseure 
     private final String defenderType;
     
-    /** Dégâts infligés */
+    // Dégâts infligés 
     private final int damage;
     
-    /** Était-ce un coup critique ? */
+    // Était-ce un coup critique ? 
     private final boolean critical;
     
-    /** Y a-t-il eu une mort ? */
+    // Y a-t-il eu une mort ? 
     private final boolean kill;
     
-    /** Message du combat */
+    // Message du combat 
     private final String message;
     
-    /** Horodatage */
+    // Horodatage 
     private final long timestamp;
     
-    /** Formateur de date */
+    // Formateur de date 
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
     
     public CombatLog(String attackerType, String defenderType, int damage, 
@@ -40,7 +40,7 @@ public class CombatLog {
         this.timestamp = System.currentTimeMillis();
     }
     
-    // ==================== GETTERS ====================
+    // getters
     
     public String getAttackerType() {
         return attackerType;
@@ -70,9 +70,8 @@ public class CombatLog {
         return timestamp;
     }
     
-    /**
-     * Retourne l'heure du combat formatée
-     */
+    // Retourne l'heure du combat formatée
+     
     public String getFormattedTime() {
         return dateFormat.format(new Date(timestamp));
     }

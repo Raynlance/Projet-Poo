@@ -66,13 +66,8 @@ public class CombatSystem {
         return result;
     }
     
-    /**
-     * Calcule les dégâts de base avant application
-     * 
-     * @param attacker L'attaquant
-     * @param defender Le défenseur
-     * @return Les dégâts calculés
-     */
+    // Calcule les dégâts de base avant application
+     
     private int calculateBaseDamage(Unit attacker, Unit defender) {
         // Formule: (Attaque - Défense/2) * Facteur aléatoire + Bonus d'arme
         int baseDamage = attacker.getAttack() - (defender.getDefense() / 2);
@@ -87,9 +82,8 @@ public class CombatSystem {
         return baseDamage;
     }
     
-    /**
-     * Vérifie si deux unités peuvent combattre
-     */
+    // Vérifie si deux unités peuvent combattre
+     
     private boolean canFight(Unit attacker, Unit defender) {
         if (attacker == null || defender == null) {
             return false;
@@ -113,13 +107,8 @@ public class CombatSystem {
         return distance <= attacker.getRange();
     }
     
-    /**
-     * Exécute un contre-attaque si possible
-     * 
-     * @param defender Le défenseur qui contre-attaque
-     * @param attacker L'attaquant original
-     * @return Le résultat du contre-attaque ou null
-     */
+    // Exécute un contre-attaque si possible
+     
     public CombatResult executeCounterAttack(Unit defender, Unit attacker) {
         // Le défenseur doit être vivant et à portée
         if (!defender.isAlive() || defender.hasAttacked()) {
@@ -140,21 +129,14 @@ public class CombatSystem {
         return null;
     }
     
-    /**
-     * Calcule si une unité peut tuer une autre en un coup
-     * 
-     * @param attacker L'attaquant
-     * @param target La cible
-     * @return true si le one-shot est possible
-     */
+    // Calcule si une unité peut tuer une autre en un coup
     public boolean canOneShot(Unit attacker, Unit target) {
         int maxPossibleDamage = (int)(attacker.getAttack() * (1 + DAMAGE_VARIANCE) * CRITICAL_MULTIPLIER);
         return maxPossibleDamage >= target.getHp();
     }
     
-    /**
-     * Génère un message descriptif du combat
-     */
+    // Génère un message descriptif du combat
+     
     private String generateCombatMessage(Unit attacker, Unit defender, 
                                         int damage, boolean isCritical) {
         StringBuilder msg = new StringBuilder();
@@ -178,9 +160,8 @@ public class CombatSystem {
         return msg.toString();
     }
     
-    /**
-     * Enregistre un combat dans l'historique
-     */
+    // Enregistre un combat dans l'historique
+     
     private void logCombat(CombatResult result) {
         CombatLog log = new CombatLog(
             result.getAttacker().getUnitType(),
@@ -198,25 +179,19 @@ public class CombatSystem {
         }
     }
     
-    /**
-     * Retourne l'historique des combats
-     */
+    //Retourne l'historique des combats
     public List<CombatLog> getCombatHistory() {
         return new ArrayList<>(combatHistory);
     }
     
-    /**
-     * Efface l'historique des combats
-     */
+    // Efface l'historique des combats
+    
     public void clearHistory() {
         combatHistory.clear();
     }
     
-    /**
-     * Affiche les derniers combats
-     * 
-     * @param count Nombre de combats à afficher
-     */
+    // Affiche les derniers combats
+     
     public void printRecentCombats(int count) {
         System.out.println("=== DERNIERS COMBATS ===");
         int start = Math.max(0, combatHistory.size() - count);
@@ -225,12 +200,8 @@ public class CombatSystem {
         }
     }
     
-    /**
-     * Calcule les statistiques de combat pour une unité
-     * 
-     * @param unitType Type d'unité
-     * @return Les statistiques
-     */
+    // Calcule les statistiques de combat pour une unité
+     
     public CombatStats getStatsForUnit(String unitType) {
         int kills = 0;
         int deaths = 0;
@@ -253,6 +224,10 @@ public class CombatSystem {
         }
         
         return new CombatStats(unitType, kills, deaths, totalDamageDealt, totalDamageTaken);
+    }
+
+    public void setCombatHistory(List<CombatLog> combatHistory) {
+        this.combatHistory = combatHistory;
     }
 
 }
