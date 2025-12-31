@@ -3,8 +3,8 @@ package pastrydad.com.entities;
 
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.math.Vector2;
-//import pastrydad.com.map.Tile;
+
+import pastrydad.com.map.GameMap;
 
 /*base pour tout type de girafe
 statistiques de combat (attaque, défense, portée)
@@ -21,15 +21,17 @@ public abstract class Unit {
     protected int moveSpeed;
     
     // cout selon les resource donc a modifier    
-   /*
     protected int goldCost;
-    protected int flourCost;
-    protected int sugarCost; */
+    protected int foodCost;
+    protected int stoneCost; 
     
     //position 
-    protected Vector2 position;
+    protected int tileX;
+    protected int tileY;
     //destination du deplacement 
-    protected Vector2 targetPosition;
+    protected int targetX;
+    protected int targetY;
+
     
     //etat de l'unité
     protected boolean isAlive;
@@ -47,10 +49,12 @@ public abstract class Unit {
     
     
     // Constructeur de base pour une unité
-
-    public Unit(float startX, float startY, boolean isPlayer) {
-        this.position = new Vector2(startX, startY);
-        this.targetPosition = new Vector2(startX, startY);
+    @SuppressWarnings("OverridableMethodCallDuringObjectConstruction")
+    public Unit(int tileX, int tileY, boolean isPlayer) {
+        this.tileX = tileX;
+        this.tileY = tileY;
+        this.targetX = tileX;
+        this.targetY = tileY;
         this.isPlayerUnit = isPlayer;
         this.isAlive = true;
         this.hasMoved = false;
@@ -119,7 +123,7 @@ public abstract class Unit {
         }
         
         // Vérifier la portée
-        float distance = this.position.dst(target.position);
+        int distance = getManhattanDistance(this.tileX, this.tileY, target.tileX, target.tileY);
         return distance <= this.range;
     }
     
@@ -139,38 +143,53 @@ public abstract class Unit {
     
     
     // Déplace l'unité vers une nouvelle position
-    public boolean moveTo(float targetX, float targetY) {
-        if (!canMoveTo(targetX, targetY)) {
+    public boolean moveTo(int targetX, int targetY, GameMap gameMap) {
+        if (!canMoveTo(targetX, targetY, gameMap)) {
             return false;
         }
         
-        this.targetPosition.set(targetX, targetY);
-        this.position.set(targetX, targetY);
+        this.tileX = targetX;
+        this.tileY = targetY;
+        this.targetX = targetX;
+        this.targetY = targetY;
         this.hasMoved = true;
         
         return true;
     }
     
     // Vérifie si l'unité peut se déplacer vers une position
-      public boolean canMoveTo(float targetX, float targetY) {
+      public boolean canMoveTo(int targetX, int targetY, GameMap gameMap) {
         if (!this.isAlive || this.hasMoved) {
             return false;
         }
         
-        // Vérifier la distance
-        float distance = this.position.dst(targetX, targetY);
-        return distance <= this.moveSpeed;
-    }
-    
-    // Vérifie si l'unité peut se déplacer vers un tile spécifique besoin de la carte pour le faire
-    
-    /*public boolean canMoveToTile(Tile tile) {
-        if (tile == null || !tile.isWalkable()) {
+       // Vérifier que la position est valide
+        if (!gameMap.isValidTilePosition(targetX, targetY)) {
             return false;
         }
         
-        return canMoveTo(tile.getX(), tile.getY());
-    }*/
+        // Vérifier que le tile est marchable (utilise le système du Member 1)
+        if (!gameMap.isTileWalkable(targetX, targetY)) {
+            return false;
+        }
+        // Vérifier la distance (Manhattan pour mouvement en grille)
+        int distance = getManhattanDistance(this.tileX, this.tileY, targetX, targetY);
+        return distance <= this.moveSpeed;
+    }
+
+    // calcule la distance de Manhattan entre deux points
+    private int getManhattanDistance(int x1, int y1, int x2, int y2) {
+        return Math.abs(x2 - x1) + Math.abs(y2 - y1);
+    }
+
+    // Calcule la distance euclidienne (pour portée d'attaque)
+    public double getEuclideanDistance(Unit other) {
+        int dx = other.tileX - this.tileX;
+        int dy = other.tileY - this.tileY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+      
+    
         
     // Réinitialise l'état de l'unité pour un nouveau tour
     public void resetTurn() {
@@ -194,16 +213,17 @@ public abstract class Unit {
     }
     
     // Dessine l'unité à l'écran
-    public void render(SpriteBatch batch, float tileSize) {
+    public void render(SpriteBatch batch, GameMap gameMap) {
         if (!this.isAlive) {
             return;
         }
         
         if (texture != null) {
-            float x = position.x * tileSize;
-            float y = position.y * tileSize;
+         double[] pixelPos = gameMap.tileToPixelTopLeft(tileX, tileY);
+            float x = (float) pixelPos[0];
+            float y = (float) pixelPos[1];
             
-            batch.draw(texture, x, y, tileSize, tileSize);
+            batch.draw(texture, x, y, gameMap.getTileWidth(), gameMap.getTileHeight());
             
         }
     }
@@ -217,7 +237,7 @@ public abstract class Unit {
         
     // Appelé quand l'unité meurt
     protected void onDeath() {
-        System.out.println(getUnitType() + " est morte à la position " + position);
+        System.out.println(getUnitType() + " est morte à la position [" + tileX + "," + tileY + "]");
     }
     
     // getters et setters 
@@ -239,14 +259,11 @@ public abstract class Unit {
     public int getMoveSpeed() {
         return moveSpeed;
     }
-    public Vector2 getPosition() {
-        return position;
+    public int getTileX() {
+        return tileX;
     }
-    public float getX() {
-        return position.x;
-    }
-    public float getY() {
-        return position.y;
+    public int getTileY() {
+        return tileY;
     }
     public boolean isAlive() {
         return isAlive;
@@ -266,16 +283,15 @@ public abstract class Unit {
     public boolean isPlayerUnit() {
         return isPlayerUnit;
     }
-    /*  getters des resource a arranger 
     public int getGoldCost() {
         return goldCost;
     }
-    public int getFlourCost() {
-        return flourCost;
+    public int getFoodCost() {
+        return foodCost;
     }
-    public int getSugarCost() {
-        return sugarCost;
-    }*/
+    public int getStoneCost() {
+        return stoneCost;
+    }
     public WeaponType getWeaponType() {
         return weaponType;
     }

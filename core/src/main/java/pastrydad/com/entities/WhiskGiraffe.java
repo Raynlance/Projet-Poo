@@ -4,9 +4,9 @@ package pastrydad.com.entities;
 //giraffe avec un fouet de cuisine comme arme
 public class WhiskGiraffe extends Unit {
     
-    public WhiskGiraffe(float startX, float startY, boolean isPlayer) {
-        super(startX, startY, isPlayer);
-        this.texturePath = "assets/units/whisk_giraffe.png";
+    public WhiskGiraffe(int tileX, int tileY, boolean isPlayer) {
+        super(tileX, tileY, isPlayer);
+        this.texturePath = "assets/units/whisk-giraffe.png";
     }
     
     @Override
@@ -19,10 +19,10 @@ public class WhiskGiraffe extends Unit {
         this.range = 1; 
         this.moveSpeed = 3;
 
-        /*cout a arranger d'apres les resource 
+        //cout a arranger d'apres les resource 
         this.goldCost = 50;
-        this.flourCost = 10;
-        this.sugarCost = 5;*/
+        this.foodCost = 10;
+        this.stoneCost = 5;
         
         // Arme
         this.weaponType = WeaponType.WHISK;
@@ -32,7 +32,7 @@ public class WhiskGiraffe extends Unit {
     public String getUnitType() {
         return "Whisk Girafe";
     }
-    
+     //double attaque 
     @Override
     public boolean useSpecialAbility(Unit target) {
         if (!canAttack(target) || hasAttacked) {
