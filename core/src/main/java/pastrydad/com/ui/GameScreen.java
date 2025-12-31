@@ -201,7 +201,7 @@ public class GameScreen implements Screen {
             batch.draw(heartIcon, healthBarX - 35, healthBarY - 5, 32, 32);
         } else {
             hudFont.setColor(new Color(1f, 0.2f, 0.4f, 1f));
-            hudFont.draw(batch, "♥", healthBarX - 40, healthBarY + 20);
+            hudFont.draw(batch, "♥", healthBarX - 45, healthBarY + 22);
         }
         
         batch.end();
@@ -229,7 +229,7 @@ public class GameScreen implements Screen {
         // Texte vie
         hudFont.setColor(Color.WHITE);
         String healthText = playerHealth + "/" + maxHealth;
-        hudFont.draw(batch, healthText, healthBarX + 45, healthBarY + 20);
+        hudFont.draw(batch, healthText, healthBarX + 45, healthBarY + 18);
         
         // === SCORE ===
         float scoreX = 280;
