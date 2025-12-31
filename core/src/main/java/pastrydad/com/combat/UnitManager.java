@@ -11,24 +11,23 @@ import pastrydad.com.entities.PanGiraffe;
 import pastrydad.com.entities.RollingPinGiraffe;
 import pastrydad.com.entities.Unit;
 import pastrydad.com.entities.WhiskGiraffe;
+import pastrydad.com.map.GameMap;
 
 public class UnitManager {
     // Liste de toutes les unités en jeu 
     private List<Unit> allUnits;
-    
     // Liste des unités du joueur
     private List<Unit> playerUnits;
-    
     // Liste des unités ennemies 
     private List<Unit> enemyUnits;
-    
-    // Unité actuellement sélectionnée 
+   // Unité actuellement sélectionnée 
     private Unit selectedUnit;
-    
-    // Système de combat 
+   // Système de combat 
     private CombatSystem combatSystem;
+    private GameMap gameMap;
     
-    public UnitManager() {
+    public UnitManager(GameMap gameMap) {
+        this.gameMap = gameMap;
         this.allUnits = new ArrayList<>();
         this.playerUnits = new ArrayList<>();
         this.enemyUnits = new ArrayList<>();
@@ -39,22 +38,22 @@ public class UnitManager {
     //creation des unite
 
     //cree une girafe fouet
-    public WhiskGiraffe createWhiskGiraffe(float x, float y, boolean isPlayer) {
-        WhiskGiraffe unit = new WhiskGiraffe(x, y, isPlayer);
+    public WhiskGiraffe createWhiskGiraffe(int tileX, int tileY, boolean isPlayer) {
+        WhiskGiraffe unit = new WhiskGiraffe(tileX, tileY, isPlayer);
         addUnit(unit);
         return unit;
     }
     
     //cree une giraffe caserole
-    public PanGiraffe createPanGiraffe(float x, float y, boolean isPlayer) {
-        PanGiraffe unit = new PanGiraffe(x, y, isPlayer);
+    public PanGiraffe createPanGiraffe(int tileX, int tileY, boolean isPlayer) {
+        PanGiraffe unit = new PanGiraffe(tileX, tileY, isPlayer);
         addUnit(unit);
         return unit;
     }
     
-    //Crée uNE girafe rouleau a patisserie
-      public RollingPinGiraffe createRollingPinGiraffe(float x, float y, boolean isPlayer) {
-        RollingPinGiraffe unit = new RollingPinGiraffe(x, y, isPlayer);
+    //Crée une girafe rouleau a patisserie
+      public RollingPinGiraffe createRollingPinGiraffe(int tileX, int tileY, boolean isPlayer) {
+        RollingPinGiraffe unit = new RollingPinGiraffe(tileX, tileY, isPlayer);
         addUnit(unit);
         return unit;
     }
@@ -70,7 +69,7 @@ public class UnitManager {
             enemyUnits.add(unit);
         }
         
-        // Charger la texture si disponible
+        // Charger la texture
         unit.loadTexture();
     }
     
@@ -134,15 +133,18 @@ public class UnitManager {
     }
     
     // Trouve l'unité à une position donnée 
-    public Unit getUnitAt(float x, float y) {
+    public Unit getUnitAt(int tileX, int tileY) {
         for (Unit unit : allUnits) {
-            if (unit.isAlive() && 
-                Math.abs(unit.getX() - x) < 0.5f && 
-                Math.abs(unit.getY() - y) < 0.5f) {
+            if (unit.isAlive() && unit.getTileX() == tileX && unit.getTileY() == tileY) {
                 return unit;
             }
         }
         return null;
+    }
+    // Trouve l'unité à une position en pixels
+    public Unit getUnitAtPixel(double pixelX, double pixelY) {
+        int[] tilePos = gameMap.pixelToTile(pixelX, pixelY);
+        return getUnitAt(tilePos[0], tilePos[1]);
     }
         
     // Fait attaquer l'unité sélectionnée sur une cible
@@ -155,7 +157,7 @@ public class UnitManager {
     }
     
     // Exécute un combat entre deux unités 
-    public CombatResult executeCombat(Unit attacker, Unit target) {
+    public CombatResult executeCombat(Unit attacker,Unit target) {
         return combatSystem.executeCombat(attacker, target);
     }
         
@@ -182,17 +184,17 @@ public class UnitManager {
     
     
     // Dessine toutes les unités
-    public void renderAll(SpriteBatch batch, float tileSize) {
-        // Dessiner d'abord les unités non sélectionnées
+    public void renderAll(SpriteBatch batch) {
+      // Dessiner d'abord les unités non sélectionnées
         for (Unit unit : allUnits) {
             if (!unit.isSelected()) {
-                unit.render(batch, tileSize);
+                unit.render(batch, gameMap);
             }
         }
         
         // Dessiner l'unité sélectionnée en dernier (au-dessus)
         if (selectedUnit != null && selectedUnit.isAlive()) {
-            selectedUnit.render(batch, tileSize);
+            selectedUnit.render(batch, gameMap);
         }
     }
     
@@ -232,6 +234,9 @@ public class UnitManager {
     }
     public CombatSystem getCombatSystem() {
         return combatSystem;
+    }
+     public GameMap getGameMap() {
+        return gameMap;
     }
     
     // Compte le nombre d'unités vivantes du joueur

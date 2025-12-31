@@ -5,9 +5,9 @@ package pastrydad.com.entities;
 //giraffe avec une casserole de cuisine comme arme
 public class PanGiraffe extends Unit {
 
-      public PanGiraffe(float startX, float startY, boolean isPlayer) {
-        super(startX, startY, isPlayer);
-        this.texturePath = "assets/units/pan_giraffe.png";
+      public PanGiraffe(int tileX, int tileY, boolean isPlayer) {
+        super(tileX, tileY, isPlayer);
+        this.texturePath = "assets/units/pan-giraffe.png";
     }
     
     @Override
@@ -20,10 +20,10 @@ public class PanGiraffe extends Unit {
         this.range = 1; // Corps à corps
         this.moveSpeed = 2; // Lente
         
-        /*  Coûts élevés a arranger en fonction des resource
+        //  Coûts élevés a arranger en fonction des resource
         this.goldCost = 100;
-        this.flourCost = 20;
-        this.sugarCost = 15;*/
+        this.foodCost = 20;
+        this.stoneCost = 15;
         
         // Arme
         this.weaponType = WeaponType.PAN;
@@ -31,7 +31,7 @@ public class PanGiraffe extends Unit {
     
     @Override
     public String getUnitType() {
-        return "Warrior Girafe";
+        return "Pan Girafe";
     }
     
     @Override

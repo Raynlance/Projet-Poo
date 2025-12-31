@@ -103,9 +103,16 @@ public class CombatSystem {
         }
         
         // Vérifier la portée
-        float distance = attacker.getPosition().dst(defender.getPosition());
+         int distance = getManhattanDistance(
+            attacker.getTileX(), attacker.getTileY(),
+            defender.getTileX(), defender.getTileY()
+        );
         return distance <= attacker.getRange();
     }
+    private int getManhattanDistance(int x1, int y1, int x2, int y2) {
+        return Math.abs(x2 - x1) + Math.abs(y2 - y1);
+    }
+    
     
     // Exécute un contre-attaque si possible
      
@@ -115,8 +122,10 @@ public class CombatSystem {
             return null;
         }
         
-        float distance = defender.getPosition().dst(attacker.getPosition());
-        if (distance > defender.getRange()) {
+           int distance = getManhattanDistance(
+            defender.getTileX(), defender.getTileY(),
+            attacker.getTileX(), attacker.getTileY()
+        );        if (distance > defender.getRange()) {
             return null;
         }
         

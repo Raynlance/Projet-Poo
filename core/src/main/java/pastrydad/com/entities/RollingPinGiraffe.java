@@ -5,9 +5,9 @@ package pastrydad.com.entities;
 //giraffe ave un rouleau de patisserie comme arme
 public class RollingPinGiraffe extends Unit {
 
-     public RollingPinGiraffe(float startX, float startY, boolean isPlayer) {
-        super(startX, startY, isPlayer);
-        this.texturePath = "assets/units/rolingpin_giraffe.png";
+     public RollingPinGiraffe(int tileX, int tileY, boolean isPlayer) {
+        super(tileX, tileY, isPlayer);
+        this.texturePath = "assets/units/rolling-pin-giraffe.png";
     }
     
     @Override
@@ -17,13 +17,13 @@ public class RollingPinGiraffe extends Unit {
         this.hp = 50;
         this.attack = 18;
         this.defense = 3;
-        this.range = 4; // Longue portée!
+        this.range = 4; // Longue portée
         this.moveSpeed = 3; // Mobile
         
-        /* Coûts moyens
+        // Coûts 
         this.goldCost = 75;
-        this.flourCost = 15;
-        this.sugarCost = 10;*/
+        this.foodCost = 15;
+        this.stoneCost = 10;
         
         // Arme
         this.weaponType = WeaponType.ROLLING_PIN;
@@ -31,7 +31,7 @@ public class RollingPinGiraffe extends Unit {
     
     @Override
     public String getUnitType() {
-        return "Ranger Girafe";
+        return "RollingPin Girafe";
     }
     
     @Override
@@ -40,13 +40,13 @@ public class RollingPinGiraffe extends Unit {
             return false;
         }
         
-        // Tir de précision: ignore la défense
+        // Tir qui ignore la défense
         int preciseDamage = attack + getWeaponBonus();
         target.takeDamage(preciseDamage);
         
         this.hasAttacked = true;
         
-        System.out.println(getUnitType() + " utilise Tir de Précision!");
+        //System.out.println(getUnitType() + " utilise Tir de Précision!");
         return true;
     }
 
