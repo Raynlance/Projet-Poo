@@ -2,7 +2,7 @@ package pastrydad.com;
 
 import com.badlogic.gdx.Game;
 
-public class GameMain extends Game {
+public class Main extends Game {
 
     @Override
     public void create() {
