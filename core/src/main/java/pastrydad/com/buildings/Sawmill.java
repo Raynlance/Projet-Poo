@@ -10,12 +10,15 @@ public class Sawmill extends Building {
 
     private static final int PRODUCTION_PER_TURN = 12;
 
-    public Sawmill() {
+    public Sawmill(int tileX, int tileY) {
         super(
             "Sawmill",
             createCost(),
-            2
+            2,
+            tileX,
+            tileY
         );
+        this.texturePath = "building/sawmill.png";
     }
 
     private static Map<ResourceType, Integer> createCost() {
@@ -26,6 +29,7 @@ public class Sawmill extends Building {
 
     @Override
     protected void onConstructionComplete() {
+        System.out.println("Sawmill construction terminée!");
     }
 
     @Override

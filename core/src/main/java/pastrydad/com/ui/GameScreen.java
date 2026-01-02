@@ -390,7 +390,12 @@ public class GameScreen implements Screen {
 
     @Override
     public void hide() {
-        System.out.println("⏸️ GameScreen caché");
+    // Arrêter la musique quand on quitte le GameScreen
+    if (backgroundMusic != null && backgroundMusic.isPlaying()) {
+        backgroundMusic.stop();
+        System.out.println("🔇 Musique du jeu arrêtée");
+    }
+    System.out.println("🔒 GameScreen caché");
     }
 
     @Override

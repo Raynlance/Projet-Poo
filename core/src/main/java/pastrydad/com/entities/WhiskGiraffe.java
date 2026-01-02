@@ -6,7 +6,7 @@ public class WhiskGiraffe extends Unit {
     
     public WhiskGiraffe(int tileX, int tileY, boolean isPlayer) {
         super(tileX, tileY, isPlayer);
-        this.texturePath = "assets/units/whisk-giraffe.png";
+        this.texturePath = "units/whisk-giraffe.png";
     }
     
     @Override
