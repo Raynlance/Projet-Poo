@@ -7,7 +7,7 @@ public class RollingPinGiraffe extends Unit {
 
      public RollingPinGiraffe(int tileX, int tileY, boolean isPlayer) {
         super(tileX, tileY, isPlayer);
-        this.texturePath = "assets/units/rolling-pin-giraffe.png";
+        this.texturePath = "units/rolling-pin-giraffe.png";
     }
     
     @Override
@@ -46,7 +46,7 @@ public class RollingPinGiraffe extends Unit {
         
         this.hasAttacked = true;
         
-        //System.out.println(getUnitType() + " utilise Tir de Précision!");
+        System.out.println(getUnitType() + " utilise Tir de Précision!");
         return true;
     }
 

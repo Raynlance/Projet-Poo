@@ -10,12 +10,15 @@ public class Farm extends Building {
 
     private static final int PRODUCTION_PER_TURN = 15;
 
-    public Farm() {
+    public Farm(int tileX, int tileY) {
         super(
             "Farm",
             createCost(),
-            2
+            2,
+            tileX,
+            tileY
         );
+        this.texturePath = "buildings/farm.png";
     }
 
     private static Map<ResourceType, Integer> createCost() {
@@ -26,6 +29,7 @@ public class Farm extends Building {
 
     @Override
     protected void onConstructionComplete() {
+        System.out.println("Farm construction terminée à la position [" + tileX + "," + tileY + "]");
     }
 
     @Override
