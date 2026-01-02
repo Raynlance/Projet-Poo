@@ -1,5 +1,11 @@
 package pastrydad.com.ui;
 
+
+
+import com.badlogic.gdx.maps.tiled.TiledMap;
+import com.badlogic.gdx.maps.tiled.TmxMapLoader;
+import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
@@ -14,8 +20,31 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import pastrydad.com.GameMain;
+import pastrydad.com.combat.CombatSystem;
+import pastrydad.com.entities.Unit;
+import pastrydad.com.entities.WhiskGiraffe;
+import pastrydad.com.map.GameMap;
+import pastrydad.com.map.SpawnPoint;
+import pastrydad.com.resources.ResourceManager;
+
+
+
+// Imports pour les systèmes de jeu
+
+import pastrydad.com.resources.ResourceType;
+import pastrydad.com.entities.PanGiraffe;
+import pastrydad.com.entities.RollingPinGiraffe;
+
+import java.util.ArrayList;
+
+
 
 public class GameScreen implements Screen {
+
+  // Rendu de la carte
+  private TiledMap tiledMap;
+  private OrthogonalTiledMapRenderer mapRenderer;
+
     private GameMain game;
     private SpriteBatch batch;
     private BitmapFont font;
@@ -47,6 +76,17 @@ public class GameScreen implements Screen {
     
     // Musique
     private Music backgroundMusic;
+
+// === SYSTÈMES DE JEU ===
+    private GameMap gameMap;
+    private ResourceManager resourceManager;
+    private CombatSystem combatSystem;
+
+  
+
+// === LISTES D'UNITÉS ===
+    private java.util.List<Unit> playerUnits;
+    private java.util.List<Unit> enemyUnits;
     
     // Couleurs - STYLE CARTOON MIGNON
     private Color healthColor = new Color(1f, 0.3f, 0.5f, 1f);          // Rose vif
@@ -82,9 +122,129 @@ public class GameScreen implements Screen {
         
         // Charger la musique
         loadMusic();
-        
+        initializeGameSystems();
         System.out.println("✅ GameScreen - Initialisé avec succès !");
     }
+
+    
+private void initializeGameSystems() {
+    System.out.println("🎮 Initialisation des systèmes de jeu...");
+    
+
+    // 1. Initialiser la carte
+    try {
+        gameMap = new GameMap(40, 70, 16, 16);
+        System.out.println("✅ GameMap initialisée (40x70 tuiles, 16x16px)");
+        
+        System.out.println("🔍 Tentative de chargement de game_map.tmx...");
+        tiledMap = new TmxMapLoader().load("game_map.tmx");
+        System.out.println("✅ Map loaded: " + (tiledMap != null));
+        
+        if (tiledMap != null) {
+            mapRenderer = new OrthogonalTiledMapRenderer(tiledMap);
+            System.out.println("✅ Carte Tiled chargée pour le rendu");
+        }
+        
+    } catch (Exception e) {
+        System.out.println("❌ ERREUR COMPLÈTE: " + e.getMessage());
+        e.printStackTrace();  // Affiche toute l'erreur
+    }
+    
+    // 2. Initialiser le gestionnaire de ressources
+    try {
+        resourceManager = new ResourceManager();
+        // Donner des ressources de départ au joueur
+        // Donner des ressources de départ au joueur
+        resourceManager.add(ResourceType.GOLD, 200);
+        resourceManager.add(ResourceType.WOOD, 100);
+        resourceManager.add(ResourceType.STONE, 50);
+        resourceManager.add(ResourceType.FOOD, 75);
+        System.out.println("✅ ResourceManager initialisé");
+    } catch (Exception e) {
+        System.out.println("❌ Erreur ResourceManager: " + e.getMessage());
+        e.printStackTrace();
+    }
+    
+    // 3. Initialiser le système de combat
+    try {
+        combatSystem = new CombatSystem();
+        System.out.println("✅ CombatSystem initialisé");
+    } catch (Exception e) {
+        System.out.println("❌ Erreur CombatSystem: " + e.getMessage());
+        e.printStackTrace();
+    }
+    
+    // 4. Initialiser les listes d'unités
+    playerUnits = new ArrayList<>();
+    enemyUnits = new ArrayList<>();
+    System.out.println("✅ Listes d'unités initialisées");
+    
+    
+    spawnInitialPlayerUnits(); 
+    
+    System.out.println("🎮 Tous les systèmes sont prêts!");
+}
+
+     private void spawnInitialPlayerUnits() {
+    try {
+        System.out.println("🦒 Création des unités initiales du joueur...");
+        
+        // Créer 2 unités de départ pour le joueur
+        PanGiraffe unit1 = new PanGiraffe(5, 5, true);
+        unit1.loadTexture();
+        playerUnits.add(unit1);
+        System.out.println("✅ PanGiraffe joueur créée à (5, 5)");
+        
+        WhiskGiraffe unit2 = new WhiskGiraffe(6, 5, true);
+        unit2.loadTexture();
+        playerUnits.add(unit2);
+        System.out.println("✅ WhiskGiraffe joueur créée à (6, 5)");
+        
+    } catch (Exception e) {
+        System.err.println("❌ Erreur création unités joueur: " + e.getMessage());
+        e.printStackTrace();
+    }
+}
+     private void updateSpawnPoints(float deltaTime) {
+    if (gameMap == null || gameMap.getSpawnPoints() == null) {
+        return;
+    }
+    
+    for (SpawnPoint spawnPoint : gameMap.getSpawnPoints()) {
+        // Incrémenter le compteur
+        spawnPoint.incrementCounter();
+        
+        // Vérifier s'il faut spawn
+        if (spawnPoint.shouldSpawn()) {
+            // Créer l'ennemi selon le type
+            Unit enemy = createEnemyFromSpawnPoint(spawnPoint);
+            
+            if (enemy != null) {
+                enemyUnits.add(enemy);
+                enemy.loadTexture();
+                spawnPoint.recordSpawn();
+                spawnPoint.resetCounter();
+                
+                System.out.println("✅ Ennemi spawné: " + enemy.getUnitType() + 
+                                 " à [" + spawnPoint.getTileX() + "," + spawnPoint.getTileY() + "]");
+            }
+        }
+    }
+}    
+private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
+    int x = spawnPoint.getTileX();
+    int y = spawnPoint.getTileY();
+    String enemyType = spawnPoint.getEnemyType();
+    
+    // Créer l'ennemi selon son type (false = c'est un ennemi)
+    return switch (enemyType) {
+        case "pan" -> new PanGiraffe(x, y, false);
+        case "rolling" -> new RollingPinGiraffe(x, y, false);
+        case "whisk" -> new WhiskGiraffe(x, y, false);
+        default -> new PanGiraffe(x, y, false); // Type par défaut
+    };
+}
+
     
     private void loadIcons() {
         try {
@@ -100,12 +260,12 @@ public class GameScreen implements Screen {
             useIcons = false;
         }
     }
-    
+
     private void loadMusic() {
         try {
             backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("music/game.mp3"));
             backgroundMusic.setLooping(true);
-            backgroundMusic.setVolume(1.0f);  // 100% de volume
+            backgroundMusic.setVolume(0.4f);
             backgroundMusic.play();
             System.out.println("🎵 Musique de jeu lancée !");
         } catch (Exception e) {
@@ -117,12 +277,15 @@ public class GameScreen implements Screen {
     public void render(float delta) {
         handleInput();
         update(delta);
+        updateSpawnPoints(delta);
         
-        // Fond de jeu
         Gdx.gl.glClearColor(gameBackgroundColor.r, gameBackgroundColor.g, gameBackgroundColor.b, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         
+        camera.position.set(640 / 2f, 1120 / 2f, 0);
+        
         camera.update();
+        viewport.apply();
         batch.setProjectionMatrix(camera.combined);
         shapeRenderer.setProjectionMatrix(camera.combined);
         
@@ -143,31 +306,26 @@ public class GameScreen implements Screen {
     }
     
     private void drawGameArea() {
+        // Dessiner la carte Tiled
+        if (mapRenderer != null) {
+            mapRenderer.setView(camera);
+            mapRenderer.render();
+        }
+        
+        // Dessiner les unités
         batch.begin();
         
-        // Message temporaire au centre
-        titleFont.setColor(new Color(1f, 0.4f, 0.7f, 1f));
-        String message = "~ ZONE DE JEU ~";
-        titleFont.draw(batch, message, VIRTUAL_WIDTH / 2 - 180, VIRTUAL_HEIGHT / 2 + 80);
+        for (Unit unit : playerUnits) {
+            if (unit != null && unit.isAlive()) {
+                unit.render(batch, gameMap);
+            }
+        }
         
-        font.setColor(new Color(0.6f, 0.3f, 0.7f, 1f));
-        font.draw(batch, "Votre equipe ajoutera le gameplay ici :", 180, VIRTUAL_HEIGHT / 2 + 20);
-        
-        font.setColor(new Color(1f, 0.5f, 0.6f, 1f));
-        font.draw(batch, "• Carte du jeu", 230, VIRTUAL_HEIGHT / 2 - 20);
-        
-        font.setColor(new Color(1f, 0.7f, 0.3f, 1f));
-        font.draw(batch, "• Girafes combattantes", 230, VIRTUAL_HEIGHT / 2 - 55);
-        
-        font.setColor(new Color(0.9f, 0.6f, 0.9f, 1f));
-        font.draw(batch, "• Batiments (boulangerie)", 230, VIRTUAL_HEIGHT / 2 - 90);
-        
-        font.setColor(new Color(1f, 0.4f, 0.5f, 1f));
-        font.draw(batch, "• Systeme de combat", 230, VIRTUAL_HEIGHT / 2 - 125);
-        
-        // === MESSAGE EN BAS ===
-        font.setColor(new Color(1f, 0.3f, 0.4f, 1f));
-        font.draw(batch, "Appuyez sur ECHAP pour retourner au menu", 180, 50);
+        for (Unit unit : enemyUnits) {
+            if (unit != null && unit.isAlive()) {
+                unit.render(batch, gameMap);
+            }
+        }
         
         batch.end();
     }
@@ -201,8 +359,9 @@ public class GameScreen implements Screen {
             batch.draw(heartIcon, healthBarX - 35, healthBarY - 5, 32, 32);
         } else {
             hudFont.setColor(new Color(1f, 0.2f, 0.4f, 1f));
-            hudFont.draw(batch, "♥", healthBarX - 45, healthBarY + 22);
+            hudFont.draw(batch, "♥", healthBarX - 45, healthBarY + 20);
         }
+        
         
         batch.end();
         
@@ -382,7 +541,10 @@ public class GameScreen implements Screen {
     @Override
     public void resize(int width, int height) {
         viewport.update(width, height, true);
-        camera.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2, 0);
+        camera.position.set(320, 560, 0);
+ camera.zoom = 2.0f; // Zoom arrière pour voir plus de la carte
+        camera.update();
+        System.out.println("🔄 GameScreen redimensionné : " + width + "x" + height);
     }
 
     @Override
@@ -413,6 +575,8 @@ public class GameScreen implements Screen {
         titleFont.dispose();
         hudFont.dispose();
         shapeRenderer.dispose();
+        if (tiledMap != null) tiledMap.dispose();
+        if (mapRenderer != null) mapRenderer.dispose();
         
         // Nettoyer les icônes
         if (heartIcon != null) heartIcon.dispose();
