@@ -31,9 +31,9 @@ public class MapLoader {
             // truc to read kaml les layers
             List<Tile>[][] tiles = loadAllLayers(doc, mapWidth, mapHeight, tilePropertiesMap);
 
-            // load the object layers
-            List<BuildingSpot> buildingSpots = loadBuildingSpots(doc, tileWidth);
-            List<SpawnPoint> spawnPoints = loadSpawnPoints(doc, tileWidth);
+            // load the object layers - PASS MAP HEIGHT AND TILE SIZE
+            List<BuildingSpot> buildingSpots = loadBuildingSpots(doc, tileWidth, mapHeight);
+            List<SpawnPoint> spawnPoints = loadSpawnPoints(doc, tileWidth, mapHeight);
 
             GameMap gameMap = new GameMap(mapWidth, mapHeight, tileWidth, tileHeight);
             
@@ -215,7 +215,7 @@ public class MapLoader {
         return tiles;
     }
 
-    private static List<BuildingSpot> loadBuildingSpots(Document doc, int tileSize) {
+    private static List<BuildingSpot> loadBuildingSpots(Document doc, int tileSize, int mapHeight) {
         List<BuildingSpot> buildingSpots = new ArrayList<>();
 
         NodeList objectGroupNodes = doc.getElementsByTagName("objectgroup");
@@ -234,6 +234,10 @@ public class MapLoader {
             return buildingSpots;
         }
 
+        // Calculate map pixel height for Y-coordinate conversion
+        int mapPixelHeight = mapHeight * tileSize;
+        System.out.println("Map pixel height: " + mapPixelHeight + " (for Y-flip conversion)");
+
         NodeList objectNodes = buildingsLayer.getElementsByTagName("object");
 
         for (int i = 0; i < objectNodes.getLength(); i++) {
@@ -244,7 +248,12 @@ public class MapLoader {
             double width = Double.parseDouble(objectElement.getAttribute("width"));
             double height = Double.parseDouble(objectElement.getAttribute("height"));
 
-            BuildingSpot spot = new BuildingSpot(x, y, width, height);
+            // FIX: Convert from Tiled's top-left origin to LibGDX's bottom-left origin
+            double flippedY = mapPixelHeight - y - height;
+            
+            System.out.println("Building spot " + i + ": Tiled Y=" + y + " -> LibGDX Y=" + flippedY);
+
+            BuildingSpot spot = new BuildingSpot(x, flippedY, width, height);
             spot.setTileSize(tileSize);
 
             NodeList propertiesNodes = objectElement.getElementsByTagName("properties");
@@ -277,7 +286,7 @@ public class MapLoader {
         return buildingSpots;
     }
 
-    private static List<SpawnPoint> loadSpawnPoints(Document doc, int tileSize) {
+    private static List<SpawnPoint> loadSpawnPoints(Document doc, int tileSize, int mapHeight) {
         List<SpawnPoint> spawnPoints = new ArrayList<>();
 
         NodeList objectGroupNodes = doc.getElementsByTagName("objectgroup");
@@ -296,6 +305,9 @@ public class MapLoader {
             return spawnPoints;
         }
 
+        // Calculate map pixel height for Y-coordinate conversion
+        int mapPixelHeight = mapHeight * tileSize;
+
         NodeList objectNodes = spawnLayer.getElementsByTagName("object");
 
         for (int i = 0; i < objectNodes.getLength(); i++) {
@@ -304,7 +316,11 @@ public class MapLoader {
             double x = Double.parseDouble(objectElement.getAttribute("x"));
             double y = Double.parseDouble(objectElement.getAttribute("y"));
 
-            SpawnPoint spawn = new SpawnPoint(x, y);
+            // FIX: Convert from Tiled's top-left origin to LibGDX's bottom-left origin
+            // For spawn points (which are typically point objects), we don't subtract height
+            double flippedY = mapPixelHeight - y;
+
+            SpawnPoint spawn = new SpawnPoint(x, flippedY);
             spawn.setTileSize(tileSize);
 
             NodeList propertiesNodes = objectElement.getElementsByTagName("properties");

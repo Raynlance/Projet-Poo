@@ -106,7 +106,7 @@ public class UnitFactory {
     }
     
     // Vérifie si on peut spawn une unité à une position
-    private boolean canSpawnAt(int tileX, int tileY) {
+    public boolean canSpawnAt(int tileX, int tileY) {
         // Vérifier que la position est valide
         if (!gameMap.isValidTilePosition(tileX, tileY)) {
             return false;

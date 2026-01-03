@@ -198,7 +198,7 @@ public class GameInputProcessor implements InputProcessor {
     /**
      * Deselects the current unit
      */
-    private void deselectUnit() {
+    public void deselectUnit() {
         if (selectedUnit != null) {
             selectedUnit.setSelected(false);
             selectedUnit = null;

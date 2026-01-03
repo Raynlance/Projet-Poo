@@ -114,8 +114,11 @@ public class BuildingPlacementSystem {
     
     /**
      * Attempt to place building at clicked location
+     * Returns true if building was placed AND placement mode should stay active
+     * Returns false if click should be ignored or processed by other handlers
      */
     public boolean handlePlacementClick(int screenX, int screenY) {
+        // If not in placement mode, let other handlers process this click
         if (!placementMode || selectedBuildingType == null) {
             return false;
         }
@@ -142,13 +145,17 @@ public class BuildingPlacementSystem {
                     
                     // Exit placement mode
                     cancelPlacement();
+                    
+                    // Return true to indicate this click was consumed
                     return true;
                 }
             }
         }
         
+        // If we're in placement mode but couldn't place, still consume the click
+        // This prevents the click from being processed by other handlers
         System.out.println("❌ Cannot place building at [" + tileX + "," + tileY + "]");
-        return false;
+        return true; // Consume the click even if placement failed
     }
     
     /**
@@ -203,10 +210,9 @@ public class BuildingPlacementSystem {
         shapeRenderer.setColor(1f, 1f, 0f, 0.6f); // Yellow
         
         for (BuildingSpot spot : gameMap.getAvailableBuildingSpots()) {
-            double[] pixelPos = gameMap.tileToPixelTopLeft(spot.getTileX(), spot.getTileY());
             shapeRenderer.rect(
-                (float)pixelPos[0], 
-                (float)pixelPos[1], 
+                (float)spot.getX(), 
+                (float)spot.getY(), 
                 (float)spot.getWidth(), 
                 (float)spot.getHeight()
             );

@@ -67,7 +67,7 @@ public class GameScreen implements Screen {
     private UnitFactory unitFactory;
     private CommandCenterUI commandCenterUI;
     
-    // Building placement system (NEW)
+    // Building placement system
     private BuildingPlacementSystem buildingPlacementSystem;
     private BuildingPlacementUI buildingPlacementUI;
     
@@ -146,7 +146,7 @@ public class GameScreen implements Screen {
             // Create building manager with dependencies
             buildingManager = new BuildingManager(gameMap, resourceManager);
             
-            // Initialize building placement system (NEW)
+            // Initialize building placement system
             buildingPlacementSystem = new BuildingPlacementSystem(
                 gameMap, 
                 buildingManager, 
@@ -180,59 +180,33 @@ public class GameScreen implements Screen {
                 public boolean touchDown(int screenX, int screenY, int pointer, int button) {
                     System.out.println("CLICK DETECTED - Button: " + button + " at screen [" + screenX + ", " + screenY + "]");
                     
-                    // PRIORITY 1: Building placement mode (NEW)
+                    // PRIORITY 1: Building placement mode
                     if (buildingPlacementSystem.isInPlacementMode()) {
                         if (button == Input.Buttons.LEFT) {
-                            // Try to place building
                             boolean placed = buildingPlacementSystem.handlePlacementClick(screenX, screenY);
-                            return true; // Consume the click either way
+                            return true;
                         } else if (button == Input.Buttons.RIGHT) {
-                            // Cancel placement
                             buildingPlacementSystem.cancelPlacement();
                             return true;
                         }
                     }
                     
-                    // PRIORITY 2: UI clicks
-                    if (button == Input.Buttons.LEFT) {
-                        System.out.println("🔍 CommandCenterUI visible? " + commandCenterUI.isVisible());
-                        
-                        // Check Command Center UI first
-                        boolean uiHandled = commandCenterUI.handleClick(screenX, screenY, VIRTUAL_HEIGHT);
-                        System.out.println("🔍 CommandCenter UI handled click? " + uiHandled);
-                        if (uiHandled) {
-                            return true; // UI consumed the click
-                        }
-                        
-                        // Check Building Placement UI (NEW)
-                        boolean buildUIHandled = buildingPlacementUI.handleClick(screenX, screenY, VIRTUAL_HEIGHT);
-                        System.out.println("🔍 Building UI handled click? " + buildUIHandled);
-                        if (buildUIHandled) {
-                            return true; // UI consumed the click
-                        }
-                    }
-                    
-                    // PRIORITY 3: Normal game input (unit selection/movement)
+                    // PRIORITY 2: Normal game input (unit selection/movement)
                     return super.touchDown(screenX, screenY, pointer, button);
                 }
                 
                 @Override
                 public boolean mouseMoved(int screenX, int screenY) {
-                    // Update building placement preview (NEW)
+                    // Update building placement preview
                     buildingPlacementSystem.updatePreviewPosition(screenX, screenY);
-                    
-                    // Update UI hover states
-                    commandCenterUI.updateHover(screenX, screenY, VIRTUAL_HEIGHT);
-                    buildingPlacementUI.updateHover(screenX, screenY, VIRTUAL_HEIGHT);
-                    
                     return super.mouseMoved(screenX, screenY);
                 }
             };
             
             // Setup input multiplexer to handle both camera and game input
             InputMultiplexer multiplexer = new InputMultiplexer();
-            multiplexer.addProcessor(gameInputProcessor);  // Game input first
-            multiplexer.addProcessor(cameraController);    // Camera second
+            multiplexer.addProcessor(gameInputProcessor);
+            multiplexer.addProcessor(cameraController);
             Gdx.input.setInputProcessor(multiplexer);
             
             // Create some test units
@@ -269,6 +243,7 @@ public class GameScreen implements Screen {
         System.out.println("   - T/Enter: End turn");
         System.out.println("   - C: Toggle Command Center UI");
         System.out.println("   - B: Toggle Building Menu");
+        System.out.println("   - 1/2/3: Spawn units (when Command Center UI is open)");
         System.out.println("   - Space/ESC: Deselect unit or return to menu");
     }
     
@@ -344,15 +319,12 @@ public class GameScreen implements Screen {
             buildingManager.render(batch);
             batch.end();
             
-            // Render building placement preview and available spots (NEW)
+            // Render building placement preview and available spots
             if (buildingPlacementSystem.isInPlacementMode()) {
                 batch.setProjectionMatrix(mapCamera.combined);
                 shapeRenderer.setProjectionMatrix(mapCamera.combined);
                 
-                // Highlight available building spots
                 buildingPlacementSystem.renderAvailableSpots(shapeRenderer);
-                
-                // Render placement preview
                 buildingPlacementSystem.renderPreview(batch, shapeRenderer);
             }
             
@@ -370,7 +342,7 @@ public class GameScreen implements Screen {
         // Render Command Center UI (on top of everything)
         commandCenterUI.render(batch, shapeRenderer);
         
-        // Render Building Placement UI (on top of everything) (NEW)
+        // Render Building Placement UI (on top of everything)
         buildingPlacementUI.render(batch, shapeRenderer);
     }
     
@@ -384,7 +356,6 @@ public class GameScreen implements Screen {
             return;
         }
         
-        // Calculer la santé totale
         int totalHealth = 0;
         int totalMaxHealth = 0;
         
@@ -393,35 +364,37 @@ public class GameScreen implements Screen {
             totalMaxHealth += unit.getMaxHp();
         }
         
-        // Mettre à jour la barre
         playerHealth = totalHealth;
         maxHealth = totalMaxHealth;
     }
 
     private void update(float delta) {
-        // Game logic updates
+        // Update Command Center UI (handles keyboard input for unit spawning)
+        if (commandCenterUI != null) {
+            commandCenterUI.update(delta);
+        }
+        
+        // Other game logic updates can go here
     }
     
     private void handleInput() {
-        // Toggle Building Menu with B key (NEW)
+        // Toggle Building Menu with B key
         if (Gdx.input.isKeyJustPressed(Input.Keys.B)) {
             buildingPlacementUI.toggle();
-            System.out.println("🏗️ Building menu toggled - visible: " + buildingPlacementUI.isVisible());
+            System.out.println("🗂️ Building menu toggled - visible: " + buildingPlacementUI.isVisible());
         }
         
         // Toggle Command Center UI with C key
         if (Gdx.input.isKeyJustPressed(Input.Keys.C)) {
             commandCenterUI.toggle();
-            System.out.println("🏗️ Command Center UI toggled");
+            System.out.println("🗂️ Command Center UI toggled");
         }
         
-        // ESC - Updated to handle placement cancellation first (MODIFIED)
+        // ESC - Updated to handle placement cancellation first
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            // First priority: Cancel building placement
             if (buildingPlacementSystem.isInPlacementMode()) {
                 buildingPlacementSystem.cancelPlacement();
             }
-            // Second priority: Deselect unit
             else if (gameInputProcessor != null && gameInputProcessor.getSelectedUnit() == null) {
                 System.out.println("🔙 Retour au menu...");
                 game.setScreen(new MenuScreen(game));
@@ -448,7 +421,7 @@ public class GameScreen implements Screen {
         // End turn (T or Enter key)
         if (Gdx.input.isKeyJustPressed(Input.Keys.T) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
             if (turnManager != null && turnManager.isPlayerTurn()) {
-                System.out.println("\n⏭️ Fin du tour joueur !");
+                System.out.println("\n⭐️ Fin du tour joueur !");
                 turnManager.endPlayerTurn();
             }
         }
@@ -462,10 +435,9 @@ public class GameScreen implements Screen {
         shapeRenderer.setProjectionMatrix(mapCamera.combined);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         
-        // Draw reachable tiles (green)
         List<int[]> reachable = gameInputProcessor.getReachableTiles();
         if (reachable != null) {
-            shapeRenderer.setColor(0.2f, 1f, 0.2f, 0.3f); // Green transparent
+            shapeRenderer.setColor(0.2f, 1f, 0.2f, 0.3f);
             for (int[] tile : reachable) {
                 float x = tile[0] * gameMap.getTileWidth();
                 float y = tile[1] * gameMap.getTileHeight();
@@ -473,10 +445,9 @@ public class GameScreen implements Screen {
             }
         }
         
-        // Draw attackable tiles (red)
         List<int[]> attackable = gameInputProcessor.getAttackableTiles();
         if (attackable != null) {
-            shapeRenderer.setColor(1f, 0.2f, 0.2f, 0.3f); // Red transparent
+            shapeRenderer.setColor(1f, 0.2f, 0.2f, 0.3f);
             for (int[] tile : attackable) {
                 float x = tile[0] * gameMap.getTileWidth();
                 float y = tile[1] * gameMap.getTileHeight();
@@ -497,14 +468,12 @@ public class GameScreen implements Screen {
             shapeRenderer.setProjectionMatrix(mapCamera.combined);
             shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
             
-            // Yellow border for selected unit
             shapeRenderer.setColor(1f, 1f, 0f, 1f);
             float x = selected.getTileX() * gameMap.getTileWidth();
             float y = selected.getTileY() * gameMap.getTileHeight();
             float width = gameMap.getTileWidth();
             float height = gameMap.getTileHeight();
             
-            // Draw thick border
             for (int i = 0; i < 3; i++) {
                 shapeRenderer.rect(x - i, y - i, width + i * 2, height + i * 2);
             }
@@ -518,11 +487,9 @@ public class GameScreen implements Screen {
         
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         
-        // Border
         shapeRenderer.setColor(hudBorderColor);
         shapeRenderer.rect(0, VIRTUAL_HEIGHT - hudHeight, VIRTUAL_WIDTH, hudHeight);
         
-        // Background
         shapeRenderer.setColor(hudBgColor);
         shapeRenderer.rect(4, VIRTUAL_HEIGHT - (hudHeight - 4), VIRTUAL_WIDTH - 8, hudHeight - 8);
         
@@ -535,7 +502,6 @@ public class GameScreen implements Screen {
         
         batch.begin();
         
-        // Heart icon
         if (useIcons && heartIcon != null) {
             batch.draw(heartIcon, healthBarX - 35, healthBarY - 5, 32, 32);
         } else {
@@ -545,7 +511,6 @@ public class GameScreen implements Screen {
         
         batch.end();
         
-        // Health bar
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         
         shapeRenderer.setColor(hudBorderColor);
@@ -562,12 +527,10 @@ public class GameScreen implements Screen {
         
         batch.begin();
         
-        // Health text
         hudFont.setColor(Color.WHITE);
         String healthText = playerHealth + "/" + maxHealth;
         hudFont.draw(batch, healthText, healthBarX + 45, healthBarY + 18);
         
-        // Score
         float scoreX = 280;
         float scoreY = VIRTUAL_HEIGHT - 30;
         
@@ -583,11 +546,9 @@ public class GameScreen implements Screen {
         hudFont.setColor(Color.WHITE);
         hudFont.draw(batch, String.valueOf(score), scoreX + 120, scoreY);
         
-        // Resources
         float iconSize = 24f;
         float resourceY = VIRTUAL_HEIGHT - 30;
         
-        // Flour
         float flourX = 430;
         if (useIcons && wheatIcon != null) {
             batch.draw(wheatIcon, flourX, resourceY - 18, iconSize, iconSize);
@@ -595,7 +556,6 @@ public class GameScreen implements Screen {
         hudFont.setColor(new Color(0.95f, 0.85f, 0.5f, 1f));
         hudFont.draw(batch, String.valueOf(flour), flourX + 30, resourceY);
         
-        // Sugar
         float sugarX = 520;
         if (useIcons && sugarIcon != null) {
             batch.draw(sugarIcon, sugarX, resourceY - 18, iconSize, iconSize);
@@ -603,7 +563,6 @@ public class GameScreen implements Screen {
         hudFont.setColor(new Color(1f, 0.7f, 0.9f, 1f));
         hudFont.draw(batch, String.valueOf(sugar), sugarX + 30, resourceY);
         
-        // Money
         float moneyX = 610;
         if (useIcons && coinIcon != null) {
             batch.draw(coinIcon, moneyX, resourceY - 18, iconSize, iconSize);
@@ -656,8 +615,6 @@ public class GameScreen implements Screen {
         return false;
     }
     
-    // GETTERS FOR MAP/CAMERA
-    
     public GameMap getGameMap() {
         return gameMap;
     }
@@ -684,10 +641,10 @@ public class GameScreen implements Screen {
         System.out.println("🖱️ Units: Left-click to select, Left-click tile to move");
         System.out.println("⚔️ Combat: Left-click enemy to attack (when in range)");
         System.out.println("⌨️ T/Enter: End turn, Space/ESC: Deselect unit");
-        System.out.println("🏗️ C: Toggle Command Center UI");
-        System.out.println("🏗️ B: Toggle Building Menu");
+        System.out.println("🗂️ C: Toggle Command Center UI");
+        System.out.println("🗂️ B: Toggle Building Menu");
+        System.out.println("⌨️ 1/2/3: Spawn Whisk/Pan/Rolling Pin (when Command Center open)");
         
-        // Re-register input processor when screen is shown
         if (cameraController != null && gameInputProcessor != null) {
             InputMultiplexer multiplexer = new InputMultiplexer();
             multiplexer.addProcessor(gameInputProcessor);
@@ -698,7 +655,6 @@ public class GameScreen implements Screen {
 
     @Override
     public void hide() {
-        // Stop music when leaving GameScreen
         if (backgroundMusic != null && backgroundMusic.isPlaying()) {
             backgroundMusic.stop();
             System.out.println("🔇 Musique du jeu arrêtée");
@@ -731,28 +687,20 @@ public class GameScreen implements Screen {
             backgroundMusic.dispose();
         }
         
-        // Dispose map
         if (mapRenderer != null) {
             mapRenderer.dispose();
         }
         
-        // Dispose units
         if (unitManager != null) {
             unitManager.dispose();
         }
         
-        // Dispose Command Center UI
         if (commandCenterUI != null) {
             commandCenterUI.dispose();
         }
         
-        // Dispose Building Placement UI (NEW)
         if (buildingPlacementUI != null) {
             buildingPlacementUI.dispose();
-        }
-        
-        if (resourceManager != null) {
-            // Clean up if needed
         }
         
         System.out.println("🗑️ GameScreen nettoyé");
