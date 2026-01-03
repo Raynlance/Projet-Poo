@@ -1,5 +1,4 @@
 package pastrydad.com.buildings;
-
 import java.util.Map;
 
 import com.badlogic.gdx.graphics.Texture;

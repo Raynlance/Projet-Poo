@@ -1,15 +1,9 @@
+
 package pastrydad.com.ui;
-
-
-
-import com.badlogic.gdx.maps.tiled.TiledMap;
-import com.badlogic.gdx.maps.tiled.TmxMapLoader;
-import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
-
-import java.util.ArrayList;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.graphics.Color;
@@ -23,22 +17,23 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import pastrydad.com.GameMain;
 import pastrydad.com.combat.CombatSystem;
-import pastrydad.com.entities.PanGiraffe;
-import pastrydad.com.entities.RollingPinGiraffe;
-import pastrydad.com.entities.Unit;
-import pastrydad.com.entities.WhiskGiraffe;
+import pastrydad.com.combat.EnemyAI;
+import pastrydad.com.combat.MovementSystem;
+import pastrydad.com.combat.UnitManager;
 import pastrydad.com.map.GameMap;
 import pastrydad.com.map.MapLoader;
+import pastrydad.com.map.MapRenderer;
 import pastrydad.com.map.SpawnPoint;
-import pastrydad.com.resources.ResourceManager;
-import pastrydad.com.resources.ResourceType;
+import pastrydad.com.input.CameraController;
+import pastrydad.com.input.GameInputProcessor;
+import pastrydad.com.buildings.BuildingManager;
+import java.util.List;
+import pastrydad.com.combat.MovementSystem;
+import pastrydad.com.combat.EnemyAI;
+import pastrydad.com.input.GameInputProcessor;
+import com.badlogic.gdx.InputMultiplexer;
 
 public class GameScreen implements Screen {
-
-  // Rendu de la carte
-  private TiledMap tiledMap;
-  private OrthogonalTiledMapRenderer mapRenderer;
-
     private GameMain game;
     private SpriteBatch batch;
     private BitmapFont font;
@@ -76,23 +71,19 @@ public class GameScreen implements Screen {
     
     // Musique
     private Music backgroundMusic;
-
-// === SYSTÈMES DE JEU ===
-    private GameMap gameMap;
-    private ResourceManager resourceManager;
-    private CombatSystem combatSystem;
-
-  
-
-// === LISTES D'UNITÉS ===
-    private java.util.List<Unit> playerUnits;
-    private java.util.List<Unit> enemyUnits;
     
    
     private Color healthColor = new Color(1f, 0.3f, 0.5f, 1f);
     private Color healthBgColor = new Color(1f, 0.8f, 0.9f, 1f);
     private Color hudBgColor = new Color(1f, 0.85f, 0.95f, 0.95f);
     private Color hudBorderColor = new Color(1f, 0.6f, 0.8f, 1f);
+
+    // === SYSTÈMES DE JEU ===
+    private CombatSystem combatSystem;
+    private UnitManager entityManager;
+    private BuildingManager buildingManager;
+    private MovementSystem movementSystem;
+    private EnemyAI enemyAI;
     
     public GameScreen(GameMain game) {
         this.game = game;
@@ -126,7 +117,7 @@ public class GameScreen implements Screen {
             cameraController = new CameraController(mapCamera, gameMap);
             
             // Register input processor
-            Gdx.input.setInputProcessor(cameraController);
+          // Créer le gestionnaire d'input pour le jeu
             
             System.out.println("✅ Map loaded successfully!");
             System.out.println("   Map size: " + gameMap.getMapWidth() + "x" + gameMap.getMapHeight() + " tiles");
@@ -149,7 +140,46 @@ public class GameScreen implements Screen {
         
         loadIcons();
         loadMusic();
-        initializeGameSystems();
+
+// Initialiser les systèmes de jeu
+        System.out.println("🎮 Initialisation des systèmes de jeu...");
+        combatSystem = new CombatSystem();
+        entityManager = new UnitManager(gameMap);
+
+        movementSystem = new MovementSystem(gameMap, entityManager);
+        enemyAI = new EnemyAI(entityManager, movementSystem, combatSystem);
+        buildingManager = new BuildingManager();
+        System.out.println("✅ Systèmes de jeu initialisés !");
+        // Configurer les input processors APRÈS l'initialisation des systèmes
+        InputMultiplexer inputMultiplexer = new InputMultiplexer();
+        GameInputProcessor gameInputProcessor = new GameInputProcessor(entityManager, gameMap, mapCamera, movementSystem);
+        inputMultiplexer.addProcessor(gameInputProcessor);
+        inputMultiplexer.addProcessor(cameraController);
+        Gdx.input.setInputProcessor(inputMultiplexer);
+        System.out.println("✅ Input processors configurés !");
+
+        // Créer des unités depuis les spawn points
+        System.out.println("🦒 Création des unités depuis les spawn points...");
+        List<SpawnPoint> spawnPoints = gameMap.getSpawnPoints();
+        System.out.println("Nombre de spawn points trouvés : " + spawnPoints.size());
+
+// Créer seulement 3 ennemis au début
+          int maxInitialEnemies = 3;
+          int enemiesCreated = 0;
+          for (SpawnPoint spawn : spawnPoints) {
+          if (enemiesCreated >= maxInitialEnemies) break;
+    
+          System.out.println("Spawn ennemi à : [" + spawn.getTileX() + ", " + spawn.getTileY() + "]");
+          entityManager.createWhiskGiraffe(spawn.getTileX(), spawn.getTileY(), false);
+          enemiesCreated++;
+}
+
+// Créer 2 girafes du joueur
+          entityManager.createWhiskGiraffe(5, 5, true);
+          entityManager.createPanGiraffe(7, 5, true);
+
+          System.out.println("✅ " + enemiesCreated + " ennemis et 2 girafes joueur créés !");
+        
         System.out.println("✅ GameScreen - Initialisé avec succès !");
         System.out.println("   Controls:");
         System.out.println("   - WASD / Arrow Keys: Pan camera");
@@ -157,126 +187,6 @@ public class GameScreen implements Screen {
         System.out.println("   - Right Mouse / Middle Mouse: Drag to pan");
         System.out.println("   - ESC: Return to menu");
     }
-
-    
-private void initializeGameSystems() {
-    System.out.println("🎮 Initialisation des systèmes de jeu...");
-    
-
-    // 1. Initialiser la carte
-    try {
-        gameMap = new GameMap(40, 70, 16, 16);
-        System.out.println("✅ GameMap initialisée (40x70 tuiles, 16x16px)");
-        
-        System.out.println("🔍 Tentative de chargement de game_map.tmx...");
-        tiledMap = new TmxMapLoader().load("game_map.tmx");
-        System.out.println("✅ Map loaded: " + (tiledMap != null));
-        
-        if (tiledMap != null) {
-            mapRenderer = new OrthogonalTiledMapRenderer(tiledMap);
-            System.out.println("✅ Carte Tiled chargée pour le rendu");
-        }
-        
-    } catch (Exception e) {
-        System.out.println("❌ ERREUR COMPLÈTE: " + e.getMessage());
-        e.printStackTrace();  // Affiche toute l'erreur
-    }
-    
-    // 2. Initialiser le gestionnaire de ressources
-    try {
-        resourceManager = new ResourceManager();
-        // Donner des ressources de départ au joueur
-        // Donner des ressources de départ au joueur
-        resourceManager.add(ResourceType.GOLD, 200);
-        resourceManager.add(ResourceType.WOOD, 100);
-        resourceManager.add(ResourceType.STONE, 50);
-        resourceManager.add(ResourceType.FOOD, 75);
-        System.out.println("✅ ResourceManager initialisé");
-    } catch (Exception e) {
-        System.out.println("❌ Erreur ResourceManager: " + e.getMessage());
-        e.printStackTrace();
-    }
-    
-    // 3. Initialiser le système de combat
-    try {
-        combatSystem = new CombatSystem();
-        System.out.println("✅ CombatSystem initialisé");
-    } catch (Exception e) {
-        System.out.println("❌ Erreur CombatSystem: " + e.getMessage());
-        e.printStackTrace();
-    }
-    
-    // 4. Initialiser les listes d'unités
-    playerUnits = new ArrayList<>();
-    enemyUnits = new ArrayList<>();
-    System.out.println("✅ Listes d'unités initialisées");
-    
-    
-    spawnInitialPlayerUnits(); 
-    
-    System.out.println("🎮 Tous les systèmes sont prêts!");
-}
-
-     private void spawnInitialPlayerUnits() {
-    try {
-        System.out.println("🦒 Création des unités initiales du joueur...");
-        
-        // Créer 2 unités de départ pour le joueur
-        PanGiraffe unit1 = new PanGiraffe(5, 5, true);
-        unit1.loadTexture();
-        playerUnits.add(unit1);
-        System.out.println("✅ PanGiraffe joueur créée à (5, 5)");
-        
-        WhiskGiraffe unit2 = new WhiskGiraffe(6, 5, true);
-        unit2.loadTexture();
-        playerUnits.add(unit2);
-        System.out.println("✅ WhiskGiraffe joueur créée à (6, 5)");
-        
-    } catch (Exception e) {
-        System.err.println("❌ Erreur création unités joueur: " + e.getMessage());
-        e.printStackTrace();
-    }
-}
-     private void updateSpawnPoints(float deltaTime) {
-    if (gameMap == null || gameMap.getSpawnPoints() == null) {
-        return;
-    }
-    
-    for (SpawnPoint spawnPoint : gameMap.getSpawnPoints()) {
-        // Incrémenter le compteur
-        spawnPoint.incrementCounter();
-        
-        // Vérifier s'il faut spawn
-        if (spawnPoint.shouldSpawn()) {
-            // Créer l'ennemi selon le type
-            Unit enemy = createEnemyFromSpawnPoint(spawnPoint);
-            
-            if (enemy != null) {
-                enemyUnits.add(enemy);
-                enemy.loadTexture();
-                spawnPoint.recordSpawn();
-                spawnPoint.resetCounter();
-                
-                System.out.println("✅ Ennemi spawné: " + enemy.getUnitType() + 
-                                 " à [" + spawnPoint.getTileX() + "," + spawnPoint.getTileY() + "]");
-            }
-        }
-    }
-}    
-private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
-    int x = spawnPoint.getTileX();
-    int y = spawnPoint.getTileY();
-    String enemyType = spawnPoint.getEnemyType();
-    
-    // Créer l'ennemi selon son type (false = c'est un ennemi)
-    return switch (enemyType) {
-        case "pan" -> new PanGiraffe(x, y, false);
-        case "rolling" -> new RollingPinGiraffe(x, y, false);
-        case "whisk" -> new WhiskGiraffe(x, y, false);
-        default -> new PanGiraffe(x, y, false); // Type par défaut
-    };
-}
-
     
     private void loadIcons() {
         try {
@@ -292,12 +202,12 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
             useIcons = false;
         }
     }
-
+    
     private void loadMusic() {
         try {
             backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("music/game.mp3"));
             backgroundMusic.setLooping(true);
-            backgroundMusic.setVolume(1.0f);  // 100% de volume
+            backgroundMusic.setVolume(1.0f);
             backgroundMusic.play();
             System.out.println("🎵 Musique de jeu lancée !");
         } catch (Exception e) {
@@ -309,17 +219,24 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
     public void render(float delta) {
         handleInput();
         update(delta);
-        updateSpawnPoints(delta);
         
-        // Fond de jeu
-        Gdx.gl.glClearColor(gameBackgroundColor.r, gameBackgroundColor.g, gameBackgroundColor.b, 1);
+        // Clear screen
+        Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         
-        camera.position.set(640 / 2f, 1120 / 2f, 0);
         
-        camera.update();
-        batch.setProjectionMatrix(camera.combined);
-        shapeRenderer.setProjectionMatrix(camera.combined);
+        if (gameMap != null && mapRenderer != null && cameraController != null) {
+            
+            cameraController.update(delta);
+            
+            // Render the map
+            batch.setProjectionMatrix(mapCamera.combined);
+            mapRenderer.render(batch, mapCamera);
+            // Render units
+            batch.begin();
+            entityManager.renderAll(batch);
+            batch.end();
+        }
         
         //  RENDER HUD ON TOP
         hudCamera.update();
@@ -330,41 +247,33 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
     }
     
     private void update(float delta) {
-        // === ICI VOTRE ÉQUIPE AJOUTERA LA LOGIQUE DU JEU ===
-        // Exemple :
-        // combatSystem.update(delta);
-        // entityManager.update(delta);
-        // buildingManager.update(delta);
+        
+         buildingManager.update(delta);
     }
     
-    private void drawGameArea() {
-        batch.begin();
+    private void handleInput() {
+        // Return to menu
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            System.out.println("🔙 Retour au menu...");
+            game.setScreen(new MenuScreen(game));
+        }
         
-        // Message temporaire au centre
-        titleFont.setColor(new Color(1f, 0.4f, 0.7f, 1f));
-        String message = "~ ZONE DE JEU ~";
-        titleFont.draw(batch, message, VIRTUAL_WIDTH / 2 - 180, VIRTUAL_HEIGHT / 2 + 80);
+        // === TOUCHES DE TEST ===
+        if (Gdx.input.isKeyJustPressed(Input.Keys.H)) {
+            playerHealth = Math.max(0, playerHealth - 10);
+            System.out.println("❤️ Vie : " + playerHealth);
+        }
         
-        font.setColor(new Color(0.6f, 0.3f, 0.7f, 1f));
-        font.draw(batch, "Votre equipe ajoutera le gameplay ici :", 180, VIRTUAL_HEIGHT / 2 + 20);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.J)) {
+            playerHealth = Math.min(maxHealth, playerHealth + 10);
+            System.out.println("💚 Vie : " + playerHealth);
+        }
         
-        font.setColor(new Color(1f, 0.5f, 0.6f, 1f));
-        font.draw(batch, "• Carte du jeu", 230, VIRTUAL_HEIGHT / 2 - 20);
-        
-        font.setColor(new Color(1f, 0.7f, 0.3f, 1f));
-        font.draw(batch, "• Girafes combattantes", 230, VIRTUAL_HEIGHT / 2 - 55);
-        
-        font.setColor(new Color(0.9f, 0.6f, 0.9f, 1f));
-        font.draw(batch, "• Batiments (boulangerie)", 230, VIRTUAL_HEIGHT / 2 - 90);
-        
-        font.setColor(new Color(1f, 0.4f, 0.5f, 1f));
-        font.draw(batch, "• Systeme de combat", 230, VIRTUAL_HEIGHT / 2 - 125);
-        
-        // === MESSAGE EN BAS ===
-        font.setColor(new Color(1f, 0.3f, 0.4f, 1f));
-        font.draw(batch, "Appuyez sur ECHAP pour retourner au menu", 180, 50);
-        
-        batch.end();
+        // Reset camera (R key)
+        if (Gdx.input.isKeyJustPressed(Input.Keys.R) && cameraController != null) {
+            cameraController.resetCamera();
+            System.out.println("📷 Camera reset to center");
+        }
     }
     
     private void drawHUD() {
@@ -394,9 +303,8 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
             batch.draw(heartIcon, healthBarX - 35, healthBarY - 5, 32, 32);
         } else {
             hudFont.setColor(new Color(1f, 0.2f, 0.4f, 1f));
-            hudFont.draw(batch, "♥", healthBarX - 45, healthBarY + 20);
+            hudFont.draw(batch, "♥", healthBarX - 45, healthBarY + 22);
         }
-        
         
         batch.end();
         
@@ -528,17 +436,13 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
     @Override
     public void resize(int width, int height) {
         viewport.update(width, height, true);
-        camera.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2, 0);
+        hudCamera.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2, 0);
     }
 
     @Override
     public void show() {
         System.out.println("📺 GameScreen affiché - Le jeu commence !");
         
-        // Re-register input processor when screen is shown
-        if (cameraController != null) {
-            Gdx.input.setInputProcessor(cameraController);
-        }
     }
 
     @Override
@@ -564,8 +468,6 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
         titleFont.dispose();
         hudFont.dispose();
         shapeRenderer.dispose();
-        if (tiledMap != null) tiledMap.dispose();
-        if (mapRenderer != null) mapRenderer.dispose();
         
         if (heartIcon != null) heartIcon.dispose();
         if (starIcon != null) starIcon.dispose();

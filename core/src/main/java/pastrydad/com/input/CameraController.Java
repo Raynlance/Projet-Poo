@@ -67,7 +67,7 @@ public class CameraController extends InputAdapter {
 
     @Override
     public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-        
+        System.out.println("🔧 CameraController.touchDown: button=" + button);
         if (button == Input.Buttons.RIGHT || button == Input.Buttons.MIDDLE) {
             isPanning = true;
             lastTouchPos.set(screenX, screenY);
