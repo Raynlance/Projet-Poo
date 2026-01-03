@@ -18,7 +18,7 @@ public class Sawmill extends Building {
             tileX,
             tileY
         );
-        this.texturePath = "building/sawmill.png";
+        this.texturePath = "buildings/sawmill.png";
     }
 
     private static Map<ResourceType, Integer> createCost() {
