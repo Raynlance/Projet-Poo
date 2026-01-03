@@ -1,4 +1,3 @@
-
 package pastrydad.com.ui;
 
 import com.badlogic.gdx.Gdx;
@@ -16,15 +15,15 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import pastrydad.com.GameMain;
-import pastrydad.com.combat.CombatSystem;
-import pastrydad.com.combat.EnemyAI;
-import pastrydad.com.combat.MovementSystem;
-import pastrydad.com.combat.UnitManager;
 import pastrydad.com.map.GameMap;
 import pastrydad.com.map.MapLoader;
 import pastrydad.com.map.MapRenderer;
-import pastrydad.com.map.SpawnPoint;
 import pastrydad.com.input.CameraController;
+import pastrydad.com.combat.UnitManager;
+import pastrydad.com.combat.MovementSystem;
+import pastrydad.com.input.GameInputProcessor;
+import pastrydad.com.entities.Unit;
+import java.util.List;
 
 public class GameScreen implements Screen {
     private GameMain game;
@@ -75,13 +74,6 @@ public class GameScreen implements Screen {
     private Color healthBgColor = new Color(1f, 0.8f, 0.9f, 1f);
     private Color hudBgColor = new Color(1f, 0.85f, 0.95f, 0.95f);
     private Color hudBorderColor = new Color(1f, 0.6f, 0.8f, 1f);
-
-    // === SYSTÈMES DE JEU ===
-    private CombatSystem combatSystem;
-    private UnitManager entityManager;
-    private BuildingManager buildingManager;
-    private MovementSystem movementSystem;
-    private EnemyAI enemyAI;
     
     public GameScreen(GameMain game) {
         this.game = game;
@@ -114,8 +106,19 @@ public class GameScreen implements Screen {
             // CREATE CAMERA CONTROLLER 
             cameraController = new CameraController(mapCamera, gameMap);
             
-            // Register input processor
-            Gdx.input.setInputProcessor(cameraController);
+            // Initialize combat systems
+            unitManager = new UnitManager(gameMap);
+            movementSystem = new MovementSystem(gameMap, unitManager);
+            gameInputProcessor = new GameInputProcessor( mapCamera, gameMap, unitManager, movementSystem, cameraController);
+            
+            // Setup input multiplexer to handle both camera and game input
+            InputMultiplexer multiplexer = new InputMultiplexer();
+            multiplexer.addProcessor(gameInputProcessor);  // Game input first
+            multiplexer.addProcessor(cameraController);    // Camera second
+            Gdx.input.setInputProcessor(multiplexer);
+            
+            // Create some test units
+            createTestUnits();
             
             System.out.println("✅ Map loaded successfully!");
             System.out.println("   Map size: " + gameMap.getMapWidth() + "x" + gameMap.getMapHeight() + " tiles");
@@ -138,45 +141,6 @@ public class GameScreen implements Screen {
         
         loadIcons();
         loadMusic();
-
-// Initialiser les systèmes de jeu
-        System.out.println("🎮 Initialisation des systèmes de jeu...");
-        combatSystem = new CombatSystem();
-        entityManager = new UnitManager(gameMap);
-
-        movementSystem = new MovementSystem(gameMap, entityManager);
-        enemyAI = new EnemyAI(entityManager, movementSystem, combatSystem);
-        buildingManager = new BuildingManager();
-        System.out.println("✅ Systèmes de jeu initialisés !");
-        // Configurer les input processors APRÈS l'initialisation des systèmes
-        InputMultiplexer inputMultiplexer = new InputMultiplexer();
-        GameInputProcessor gameInputProcessor = new GameInputProcessor(entityManager, gameMap, mapCamera, movementSystem);
-        inputMultiplexer.addProcessor(gameInputProcessor);
-        inputMultiplexer.addProcessor(cameraController);
-        Gdx.input.setInputProcessor(inputMultiplexer);
-        System.out.println("✅ Input processors configurés !");
-
-        // Créer des unités depuis les spawn points
-        System.out.println("🦒 Création des unités depuis les spawn points...");
-        List<SpawnPoint> spawnPoints = gameMap.getSpawnPoints();
-        System.out.println("Nombre de spawn points trouvés : " + spawnPoints.size());
-
-// Créer seulement 3 ennemis au début
-          int maxInitialEnemies = 3;
-          int enemiesCreated = 0;
-          for (SpawnPoint spawn : spawnPoints) {
-          if (enemiesCreated >= maxInitialEnemies) break;
-    
-          System.out.println("Spawn ennemi à : [" + spawn.getTileX() + ", " + spawn.getTileY() + "]");
-          entityManager.createWhiskGiraffe(spawn.getTileX(), spawn.getTileY(), false);
-          enemiesCreated++;
-}
-
-// Créer 2 girafes du joueur
-          entityManager.createWhiskGiraffe(5, 5, true);
-          entityManager.createPanGiraffe(7, 5, true);
-
-          System.out.println("✅ " + enemiesCreated + " ennemis et 2 girafes joueur créés !");
         
         System.out.println("✅ GameScreen - Initialisé avec succès !");
         System.out.println("   Controls:");
@@ -248,6 +212,17 @@ public class GameScreen implements Screen {
             // Render the map
             batch.setProjectionMatrix(mapCamera.combined);
             mapRenderer.render(batch, mapCamera);
+            
+            // Render visual feedback (movement ranges)
+            renderMovementRanges();
+            
+            // Render units
+            batch.begin();
+            unitManager.renderAll(batch);
+            batch.end();
+            
+            // Render selection highlight
+            renderSelectionHighlight();
         }
         
         //  RENDER HUD ON TOP
@@ -259,8 +234,11 @@ public class GameScreen implements Screen {
     }
     
     private void update(float delta) {
-        
-         buildingManager.update(delta);
+        // === ICI VOTRE ÉQUIPE AJOUTERA LA LOGIQUE DU JEU ===
+        // Exemple :
+        // combatSystem.update(delta);
+        // entityManager.update(delta);
+        // buildingManager.update(delta);
     }
     
     private void handleInput() {
@@ -523,8 +501,11 @@ public class GameScreen implements Screen {
         System.out.println("⌨️ T/Enter: End turn, Space/ESC: Deselect unit");
         
         // Re-register input processor when screen is shown
-        if (cameraController != null) {
-            Gdx.input.setInputProcessor(cameraController);
+        if (cameraController != null && gameInputProcessor != null) {
+            InputMultiplexer multiplexer = new InputMultiplexer();
+            multiplexer.addProcessor(gameInputProcessor);
+            multiplexer.addProcessor(cameraController);
+            Gdx.input.setInputProcessor(multiplexer);
         }
     }
 
