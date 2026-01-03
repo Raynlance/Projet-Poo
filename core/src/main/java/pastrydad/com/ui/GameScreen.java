@@ -2,6 +2,7 @@ package pastrydad.com.ui;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
+import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.graphics.Color;
@@ -18,6 +19,11 @@ import pastrydad.com.map.GameMap;
 import pastrydad.com.map.MapLoader;
 import pastrydad.com.map.MapRenderer;
 import pastrydad.com.input.CameraController;
+import pastrydad.com.combat.UnitManager;
+import pastrydad.com.combat.MovementSystem;
+import pastrydad.com.input.GameInputProcessor;
+import pastrydad.com.entities.Unit;
+import java.util.List;
 
 public class GameScreen implements Screen {
     private GameMain game;
@@ -35,6 +41,11 @@ public class GameScreen implements Screen {
     private MapRenderer mapRenderer;
     private OrthographicCamera mapCamera;
     private CameraController cameraController;
+    
+    // Combat systems
+    private UnitManager unitManager;
+    private MovementSystem movementSystem;
+    private GameInputProcessor gameInputProcessor;
     
     private static final float VIRTUAL_WIDTH = 800f;
     private static final float VIRTUAL_HEIGHT = 600f;
@@ -95,8 +106,21 @@ public class GameScreen implements Screen {
             // CREATE CAMERA CONTROLLER 
             cameraController = new CameraController(mapCamera, gameMap);
             
-            // Register input processor
-            Gdx.input.setInputProcessor(cameraController);
+            // Initialize combat systems
+            unitManager = new UnitManager(gameMap);
+            movementSystem = new MovementSystem(gameMap, unitManager);
+            gameInputProcessor = new GameInputProcessor(
+                mapCamera, gameMap, unitManager, movementSystem, cameraController
+            );
+            
+            // Setup input multiplexer to handle both camera and game input
+            InputMultiplexer multiplexer = new InputMultiplexer();
+            multiplexer.addProcessor(gameInputProcessor);  // Game input first
+            multiplexer.addProcessor(cameraController);    // Camera second
+            Gdx.input.setInputProcessor(multiplexer);
+            
+            // Create some test units
+            createTestUnits();
             
             System.out.println("✅ Map loaded successfully!");
             System.out.println("   Map size: " + gameMap.getMapWidth() + "x" + gameMap.getMapHeight() + " tiles");
@@ -125,7 +149,25 @@ public class GameScreen implements Screen {
         System.out.println("   - WASD / Arrow Keys: Pan camera");
         System.out.println("   - Mouse Wheel: Zoom in/out");
         System.out.println("   - Right Mouse / Middle Mouse: Drag to pan");
-        System.out.println("   - ESC: Return to menu");
+        System.out.println("   - Left Click: Select/Move/Attack units");
+        System.out.println("   - T/Enter: End turn");
+        System.out.println("   - Space/ESC: Deselect unit or return to menu");
+    }
+    
+    private void createTestUnits() {
+        System.out.println("🦒 Creating test units...");
+        
+        // Create player units (blue/friendly)
+        unitManager.createWhiskGiraffe(5, 5, true);
+        unitManager.createPanGiraffe(7, 5, true);
+        unitManager.createRollingPinGiraffe(6, 6, true);
+        
+        // Create enemy units (red)
+        unitManager.createWhiskGiraffe(15, 10, false);
+        unitManager.createPanGiraffe(17, 11, false);
+        
+        System.out.println("✅ Created " + unitManager.getPlayerUnitCount() + " player units");
+        System.out.println("✅ Created " + unitManager.getEnemyUnitCount() + " enemy units");
     }
     
     private void loadIcons() {
@@ -172,6 +214,17 @@ public class GameScreen implements Screen {
             // Render the map
             batch.setProjectionMatrix(mapCamera.combined);
             mapRenderer.render(batch, mapCamera);
+            
+            // Render visual feedback (movement ranges)
+            renderMovementRanges();
+            
+            // Render units
+            batch.begin();
+            unitManager.renderAll(batch);
+            batch.end();
+            
+            // Render selection highlight
+            renderSelectionHighlight();
         }
         
         //  RENDER HUD ON TOP
@@ -191,10 +244,13 @@ public class GameScreen implements Screen {
     }
     
     private void handleInput() {
-        // Return to menu
+        // ESC now handled by GameInputProcessor to deselect units
+        // Only return to menu if no unit is selected
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            System.out.println("🔙 Retour au menu...");
-            game.setScreen(new MenuScreen(game));
+            if (gameInputProcessor != null && gameInputProcessor.getSelectedUnit() == null) {
+                System.out.println("🔙 Retour au menu...");
+                game.setScreen(new MenuScreen(game));
+            }
         }
         
         // === TOUCHES DE TEST ===
@@ -212,6 +268,65 @@ public class GameScreen implements Screen {
         if (Gdx.input.isKeyJustPressed(Input.Keys.R) && cameraController != null) {
             cameraController.resetCamera();
             System.out.println("📷 Camera reset to center");
+        }
+    }
+    
+    private void renderMovementRanges() {
+        if (gameInputProcessor == null) {
+            return;
+        }
+        
+        shapeRenderer.setProjectionMatrix(mapCamera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        
+        // Draw reachable tiles (green)
+        List<int[]> reachable = gameInputProcessor.getReachableTiles();
+        if (reachable != null) {
+            shapeRenderer.setColor(0.2f, 1f, 0.2f, 0.3f); // Green transparent
+            for (int[] tile : reachable) {
+                float x = tile[0] * gameMap.getTileWidth();
+                float y = tile[1] * gameMap.getTileHeight();
+                shapeRenderer.rect(x, y, gameMap.getTileWidth(), gameMap.getTileHeight());
+            }
+        }
+        
+        // Draw attackable tiles (red)
+        List<int[]> attackable = gameInputProcessor.getAttackableTiles();
+        if (attackable != null) {
+            shapeRenderer.setColor(1f, 0.2f, 0.2f, 0.3f); // Red transparent
+            for (int[] tile : attackable) {
+                float x = tile[0] * gameMap.getTileWidth();
+                float y = tile[1] * gameMap.getTileHeight();
+                shapeRenderer.rect(x, y, gameMap.getTileWidth(), gameMap.getTileHeight());
+            }
+        }
+        
+        shapeRenderer.end();
+    }
+    
+    private void renderSelectionHighlight() {
+        if (gameInputProcessor == null) {
+            return;
+        }
+        
+        Unit selected = gameInputProcessor.getSelectedUnit();
+        if (selected != null && selected.isAlive()) {
+            shapeRenderer.setProjectionMatrix(mapCamera.combined);
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+            
+            // Yellow border for selected unit
+            shapeRenderer.setColor(1f, 1f, 0f, 1f);
+            float x = selected.getTileX() * gameMap.getTileWidth();
+            float y = selected.getTileY() * gameMap.getTileHeight();
+            float width = gameMap.getTileWidth();
+            float height = gameMap.getTileHeight();
+            
+            // Draw thick border
+            for (int i = 0; i < 3; i++) {
+                shapeRenderer.rect(x - i, y - i, width + i * 2, height + i * 2);
+            }
+            
+            shapeRenderer.end();
         }
     }
     
@@ -381,21 +496,29 @@ public class GameScreen implements Screen {
     @Override
     public void show() {
         System.out.println("📺 GameScreen affiché - Le jeu commence !");
+        System.out.println("\n=== CONTROLS ===");
+        System.out.println("🎮 Camera: WASD/Arrows, Mouse Wheel zoom, Right-click drag");
+        System.out.println("🖱️ Units: Left-click to select, Left-click tile to move");
+        System.out.println("⚔️ Combat: Left-click enemy to attack (when in range)");
+        System.out.println("⌨️ T/Enter: End turn, Space/ESC: Deselect unit");
         
         // Re-register input processor when screen is shown
-        if (cameraController != null) {
-            Gdx.input.setInputProcessor(cameraController);
+        if (cameraController != null && gameInputProcessor != null) {
+            InputMultiplexer multiplexer = new InputMultiplexer();
+            multiplexer.addProcessor(gameInputProcessor);
+            multiplexer.addProcessor(cameraController);
+            Gdx.input.setInputProcessor(multiplexer);
         }
     }
 
     @Override
     public void hide() {
-    // Arrêter la musique quand on quitte le GameScreen
-    if (backgroundMusic != null && backgroundMusic.isPlaying()) {
-        backgroundMusic.stop();
-        System.out.println("🔇 Musique du jeu arrêtée");
-    }
-    System.out.println("🔒 GameScreen caché");
+        // Arrêter la musique quand on quitte le GameScreen
+        if (backgroundMusic != null && backgroundMusic.isPlaying()) {
+            backgroundMusic.stop();
+            System.out.println("🔇 Musique du jeu arrêtée");
+        }
+        System.out.println("🔒 GameScreen caché");
     }
 
     @Override
@@ -426,6 +549,11 @@ public class GameScreen implements Screen {
         // Dispose map
         if (mapRenderer != null) {
             mapRenderer.dispose();
+        }
+        
+        // Dispose units
+        if (unitManager != null) {
+            unitManager.dispose();
         }
         
         System.out.println("🗑️ GameScreen nettoyé");
