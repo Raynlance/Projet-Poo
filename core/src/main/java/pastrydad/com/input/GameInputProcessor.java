@@ -140,7 +140,7 @@ public class GameInputProcessor implements InputProcessor {
             boolean moved = movementSystem.moveUnit(selectedUnit, tileX, tileY);
             
             if (moved) {
-                System.out.println("   ✅ Unit moved successfully from [" + selectedUnit.getTileX() + ", " + selectedUnit.getTileY() + "] to [" + tileX + ", " + tileY + "]");
+                System.out.println("   ✅ Unit moved successfully to [" + tileX + ", " + tileY + "]");
                 // Update visual feedback
                 updateReachableTiles();
             } else {
