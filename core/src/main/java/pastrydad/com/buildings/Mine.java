@@ -10,12 +10,15 @@ public class Mine extends Building {
 
     private static final int PRODUCTION_PER_TURN = 10;
 
-    public Mine() {
+    public Mine(int tileX, int tileY) {
         super(
             "Mine",
             createCost(),
-            2
+            2,
+            tileX,
+            tileY
         );
+        this.texturePath = "buildings/mine.png";
     }
 
     private static Map<ResourceType, Integer> createCost() {
@@ -26,7 +29,7 @@ public class Mine extends Building {
 
     @Override
     protected void onConstructionComplete() {
-        // Optional: log, notify, or bonus
+        System.out.println("Mine construction terminée à la position [" + tileX + "," + tileY + "]");
     }
 
     @Override

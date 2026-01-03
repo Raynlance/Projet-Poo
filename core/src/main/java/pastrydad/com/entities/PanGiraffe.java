@@ -7,7 +7,7 @@ public class PanGiraffe extends Unit {
 
       public PanGiraffe(int tileX, int tileY, boolean isPlayer) {
         super(tileX, tileY, isPlayer);
-        this.texturePath = "assets/units/pan-giraffe.png";
+        this.texturePath = "units/pan-giraffe.png";
     }
     
     @Override
@@ -46,7 +46,7 @@ public class PanGiraffe extends Unit {
         
         this.hasAttacked = true;
         
-     //   System.out.println(getUnitType() + " utilise Coup de Casserole ");
+        System.out.println(getUnitType() + " utilise Coup de Casserole ");
         return true;
     }
 }

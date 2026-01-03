@@ -6,6 +6,8 @@ import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 
+import java.util.ArrayList;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
@@ -21,23 +23,15 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import pastrydad.com.GameMain;
 import pastrydad.com.combat.CombatSystem;
+import pastrydad.com.entities.PanGiraffe;
+import pastrydad.com.entities.RollingPinGiraffe;
 import pastrydad.com.entities.Unit;
 import pastrydad.com.entities.WhiskGiraffe;
 import pastrydad.com.map.GameMap;
+import pastrydad.com.map.MapLoader;
 import pastrydad.com.map.SpawnPoint;
 import pastrydad.com.resources.ResourceManager;
-
-
-
-// Imports pour les systèmes de jeu
-
 import pastrydad.com.resources.ResourceType;
-import pastrydad.com.entities.PanGiraffe;
-import pastrydad.com.entities.RollingPinGiraffe;
-
-import java.util.ArrayList;
-
-
 
 public class GameScreen implements Screen {
 
@@ -52,13 +46,19 @@ public class GameScreen implements Screen {
     private BitmapFont hudFont;
     private ShapeRenderer shapeRenderer;
     
-    private OrthographicCamera camera;
+    private OrthographicCamera hudCamera;
     private Viewport viewport;
+    
+    // system tae the map
+    private GameMap gameMap;
+    private MapRenderer mapRenderer;
+    private OrthographicCamera mapCamera;
+    private CameraController cameraController;
     
     private static final float VIRTUAL_WIDTH = 800f;
     private static final float VIRTUAL_HEIGHT = 600f;
     
-    // HUD - Variables de jeu
+    // HUD 
     private int playerHealth = 100;
     private int maxHealth = 100;
     private int score = 0;
@@ -66,7 +66,7 @@ public class GameScreen implements Screen {
     private int sugar = 30;      
     private int money = 100;     
     
-    // Icônes HUD
+    //icônes HUD
     private Texture heartIcon;
     private Texture starIcon;
     private Texture wheatIcon;
@@ -88,42 +88,74 @@ public class GameScreen implements Screen {
     private java.util.List<Unit> playerUnits;
     private java.util.List<Unit> enemyUnits;
     
-    // Couleurs - STYLE CARTOON MIGNON
-    private Color healthColor = new Color(1f, 0.3f, 0.5f, 1f);          // Rose vif
-    private Color healthBgColor = new Color(1f, 0.8f, 0.9f, 1f);        // Rose très clair
-    private Color hudBgColor = new Color(1f, 0.85f, 0.95f, 0.95f);     // Rose pastel
-    private Color hudBorderColor = new Color(1f, 0.6f, 0.8f, 1f);      // Rose moyen
-    private Color gameBackgroundColor = new Color(0.95f, 0.85f, 1f, 1f); // Violet très clair
+   
+    private Color healthColor = new Color(1f, 0.3f, 0.5f, 1f);
+    private Color healthBgColor = new Color(1f, 0.8f, 0.9f, 1f);
+    private Color hudBgColor = new Color(1f, 0.85f, 0.95f, 0.95f);
+    private Color hudBorderColor = new Color(1f, 0.6f, 0.8f, 1f);
     
     public GameScreen(GameMain game) {
         this.game = game;
         
         System.out.println("🎮 GameScreen - Initialisation...");
         
-        camera = new OrthographicCamera();
-        viewport = new FitViewport(VIRTUAL_WIDTH, VIRTUAL_HEIGHT, camera);
-        camera.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2, 0);
-        camera.update();
+        // HUD Camera 
+        hudCamera = new OrthographicCamera();
+        viewport = new FitViewport(VIRTUAL_WIDTH, VIRTUAL_HEIGHT, hudCamera);
+        hudCamera.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2, 0);
+        hudCamera.update();
+        
+        //  LOAD MAP 
+        System.out.println("🗺️ Loading map...");
+        gameMap = MapLoader.loadMap("game_map.tmx");
+        
+        if (gameMap != null) {
+            mapRenderer = new MapRenderer(gameMap);
+            
+            
+            mapCamera = new OrthographicCamera();
+            mapCamera.setToOrtho(false, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+            
+            // Initialize camera at map center
+            float centerX = gameMap.getMapWidth() * gameMap.getTileWidth() / 2f;
+            float centerY = gameMap.getMapHeight() * gameMap.getTileHeight() / 2f;
+            mapCamera.position.set(centerX, centerY, 0);
+            mapCamera.update();
+            
+            // CREATE CAMERA CONTROLLER 
+            cameraController = new CameraController(mapCamera, gameMap);
+            
+            // Register input processor
+            Gdx.input.setInputProcessor(cameraController);
+            
+            System.out.println("✅ Map loaded successfully!");
+            System.out.println("   Map size: " + gameMap.getMapWidth() + "x" + gameMap.getMapHeight() + " tiles");
+            System.out.println("   Tile size: " + gameMap.getTileWidth() + "x" + gameMap.getTileHeight() + " pixels");
+        } else {
+            System.err.println("❌ Failed to load map!");
+        }
         
         batch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
         
         font = new BitmapFont();
-        font.getData().setScale(1.6f);  // Réduit
+        font.getData().setScale(1.6f);
         
         titleFont = new BitmapFont();
-        titleFont.getData().setScale(3f);  // Réduit
+        titleFont.getData().setScale(3f);
         
         hudFont = new BitmapFont();
-        hudFont.getData().setScale(1.8f);  // Réduit pour HUD plus petit
+        hudFont.getData().setScale(1.8f);
         
-        // Charger les icônes
         loadIcons();
-        
-        // Charger la musique
         loadMusic();
         initializeGameSystems();
         System.out.println("✅ GameScreen - Initialisé avec succès !");
+        System.out.println("   Controls:");
+        System.out.println("   - WASD / Arrow Keys: Pan camera");
+        System.out.println("   - Mouse Wheel: Zoom in/out");
+        System.out.println("   - Right Mouse / Middle Mouse: Drag to pan");
+        System.out.println("   - ESC: Return to menu");
     }
 
     
@@ -265,7 +297,7 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
         try {
             backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("music/game.mp3"));
             backgroundMusic.setLooping(true);
-            backgroundMusic.setVolume(0.4f);
+            backgroundMusic.setVolume(1.0f);  // 100% de volume
             backgroundMusic.play();
             System.out.println("🎵 Musique de jeu lancée !");
         } catch (Exception e) {
@@ -279,73 +311,76 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
         update(delta);
         updateSpawnPoints(delta);
         
+        // Fond de jeu
         Gdx.gl.glClearColor(gameBackgroundColor.r, gameBackgroundColor.g, gameBackgroundColor.b, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         
         camera.position.set(640 / 2f, 1120 / 2f, 0);
         
         camera.update();
-        viewport.apply();
         batch.setProjectionMatrix(camera.combined);
         shapeRenderer.setProjectionMatrix(camera.combined);
         
-        // Zone de jeu
-        drawGameArea();
+        //  RENDER HUD ON TOP
+        hudCamera.update();
+        batch.setProjectionMatrix(hudCamera.combined);
+        shapeRenderer.setProjectionMatrix(hudCamera.combined);
         
-        // HUD par-dessus
         drawHUD();
     }
     
     private void update(float delta) {
         // === ICI VOTRE ÉQUIPE AJOUTERA LA LOGIQUE DU JEU ===
         // Exemple :
-        // mapManager.update(delta);
         // combatSystem.update(delta);
         // entityManager.update(delta);
         // buildingManager.update(delta);
     }
     
     private void drawGameArea() {
-        // Dessiner la carte Tiled
-        if (mapRenderer != null) {
-            mapRenderer.setView(camera);
-            mapRenderer.render();
-        }
-        
-        // Dessiner les unités
         batch.begin();
         
-        for (Unit unit : playerUnits) {
-            if (unit != null && unit.isAlive()) {
-                unit.render(batch, gameMap);
-            }
-        }
+        // Message temporaire au centre
+        titleFont.setColor(new Color(1f, 0.4f, 0.7f, 1f));
+        String message = "~ ZONE DE JEU ~";
+        titleFont.draw(batch, message, VIRTUAL_WIDTH / 2 - 180, VIRTUAL_HEIGHT / 2 + 80);
         
-        for (Unit unit : enemyUnits) {
-            if (unit != null && unit.isAlive()) {
-                unit.render(batch, gameMap);
-            }
-        }
+        font.setColor(new Color(0.6f, 0.3f, 0.7f, 1f));
+        font.draw(batch, "Votre equipe ajoutera le gameplay ici :", 180, VIRTUAL_HEIGHT / 2 + 20);
+        
+        font.setColor(new Color(1f, 0.5f, 0.6f, 1f));
+        font.draw(batch, "• Carte du jeu", 230, VIRTUAL_HEIGHT / 2 - 20);
+        
+        font.setColor(new Color(1f, 0.7f, 0.3f, 1f));
+        font.draw(batch, "• Girafes combattantes", 230, VIRTUAL_HEIGHT / 2 - 55);
+        
+        font.setColor(new Color(0.9f, 0.6f, 0.9f, 1f));
+        font.draw(batch, "• Batiments (boulangerie)", 230, VIRTUAL_HEIGHT / 2 - 90);
+        
+        font.setColor(new Color(1f, 0.4f, 0.5f, 1f));
+        font.draw(batch, "• Systeme de combat", 230, VIRTUAL_HEIGHT / 2 - 125);
+        
+        // === MESSAGE EN BAS ===
+        font.setColor(new Color(1f, 0.3f, 0.4f, 1f));
+        font.draw(batch, "Appuyez sur ECHAP pour retourner au menu", 180, 50);
         
         batch.end();
     }
     
     private void drawHUD() {
-        // === HUD PLUS PETIT (80px au lieu de 130px) ===
         float hudHeight = 80f;
         
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         
-        // Bordure rose
+        // Border
         shapeRenderer.setColor(hudBorderColor);
         shapeRenderer.rect(0, VIRTUAL_HEIGHT - hudHeight, VIRTUAL_WIDTH, hudHeight);
         
-        // Fond rose pastel
+        // Background
         shapeRenderer.setColor(hudBgColor);
         shapeRenderer.rect(4, VIRTUAL_HEIGHT - (hudHeight - 4), VIRTUAL_WIDTH - 8, hudHeight - 8);
         
         shapeRenderer.end();
-        
         
         float healthBarX = 90;
         float healthBarY = VIRTUAL_HEIGHT - 50;
@@ -354,7 +389,7 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
         
         batch.begin();
         
-        // Icône cœur ou symbole
+        // Heart icon
         if (useIcons && heartIcon != null) {
             batch.draw(heartIcon, healthBarX - 35, healthBarY - 5, 32, 32);
         } else {
@@ -365,18 +400,15 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
         
         batch.end();
         
-        // Barre de vie
+        // Health bar
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         
-        // Bordure
         shapeRenderer.setColor(hudBorderColor);
         shapeRenderer.rect(healthBarX - 2, healthBarY - 2, healthBarWidth + 4, healthBarHeight + 4);
         
-        // Fond
         shapeRenderer.setColor(healthBgColor);
         shapeRenderer.rect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
         
-        // Barre rose
         float healthPercent = (float) playerHealth / maxHealth;
         shapeRenderer.setColor(healthColor);
         shapeRenderer.rect(healthBarX, healthBarY, healthBarWidth * healthPercent, healthBarHeight);
@@ -385,12 +417,12 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
         
         batch.begin();
         
-        // Texte vie
+        // Health text
         hudFont.setColor(Color.WHITE);
         String healthText = playerHealth + "/" + maxHealth;
         hudFont.draw(batch, healthText, healthBarX + 45, healthBarY + 18);
         
-        // === SCORE ===
+        // Score
         float scoreX = 280;
         float scoreY = VIRTUAL_HEIGHT - 30;
         
@@ -406,11 +438,11 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
         hudFont.setColor(Color.WHITE);
         hudFont.draw(batch, String.valueOf(score), scoreX + 120, scoreY);
         
-        // === RESSOURCES - BIEN ESPACÉES ===
+        // Resources
         float iconSize = 24f;
         float resourceY = VIRTUAL_HEIGHT - 30;
         
-        // Farine
+        // Flour
         float flourX = 430;
         if (useIcons && wheatIcon != null) {
             batch.draw(wheatIcon, flourX, resourceY - 18, iconSize, iconSize);
@@ -418,7 +450,7 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
         hudFont.setColor(new Color(0.95f, 0.85f, 0.5f, 1f));
         hudFont.draw(batch, String.valueOf(flour), flourX + 30, resourceY);
         
-        // Sucre
+        // Sugar
         float sugarX = 520;
         if (useIcons && sugarIcon != null) {
             batch.draw(sugarIcon, sugarX, resourceY - 18, iconSize, iconSize);
@@ -426,7 +458,7 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
         hudFont.setColor(new Color(1f, 0.7f, 0.9f, 1f));
         hudFont.draw(batch, String.valueOf(sugar), sugarX + 30, resourceY);
         
-        // Argent
+        // Money
         float moneyX = 610;
         if (useIcons && coinIcon != null) {
             batch.draw(coinIcon, moneyX, resourceY - 18, iconSize, iconSize);
@@ -437,47 +469,7 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
         batch.end();
     }
     
-    private void handleInput() {
-        // Retour au menu
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            System.out.println("🔙 Retour au menu...");
-            game.setScreen(new MenuScreen(game));
-        }
-        
-        // === TOUCHES DE TEST (À ENLEVER PLUS TARD) ===
-        if (Gdx.input.isKeyJustPressed(Input.Keys.H)) {
-            playerHealth = Math.max(0, playerHealth - 10);
-            System.out.println("❤️ Vie : " + playerHealth);
-        }
-        
-        if (Gdx.input.isKeyJustPressed(Input.Keys.J)) {
-            playerHealth = Math.min(maxHealth, playerHealth + 10);
-            System.out.println("💚 Vie : " + playerHealth);
-        }
-        
-        if (Gdx.input.isKeyJustPressed(Input.Keys.S)) {
-            score += 100;
-            System.out.println("🎯 Score : " + score);
-        }
-        
-        if (Gdx.input.isKeyJustPressed(Input.Keys.F)) {
-            flour += 10;
-            System.out.println("🌾 Farine : " + flour);
-        }
-        
-        if (Gdx.input.isKeyJustPressed(Input.Keys.U)) {
-            sugar += 10;
-            System.out.println("🍬 Sucre : " + sugar);
-        }
-        
-        if (Gdx.input.isKeyJustPressed(Input.Keys.M)) {
-            money += 50;
-            System.out.println("💰 Argent : " + money);
-        }
-    }
-    
-
-    // Ces méthodes permettent de modifier le HUD automatiquement depuis le jeu
+    // === PUBLIC METHODS FOR GAME LOGIC ===
     
     public void setPlayerHealth(int health) {
         this.playerHealth = Math.max(0, Math.min(maxHealth, health));
@@ -498,33 +490,14 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
         System.out.println("🎯 Score : +" + points + " (Total : " + score + ")");
     }
     
-    public void addFlour(int amount) {
-        this.flour += amount;
-    }
+    public void addFlour(int amount) { this.flour += amount; }
+    public void addSugar(int amount) { this.sugar += amount; }
+    public void addMoney(int amount) { this.money += amount; }
     
-    public void addSugar(int amount) {
-        this.sugar += amount;
-    }
-    
-    public void addMoney(int amount) {
-        this.money += amount;
-    }
-    
-    public int getFlour() {
-        return flour;
-    }
-    
-    public int getSugar() {
-        return sugar;
-    }
-    
-    public int getMoney() {
-        return money;
-    }
-    
-    public int getPlayerHealth() {
-        return playerHealth;
-    }
+    public int getFlour() { return flour; }
+    public int getSugar() { return sugar; }
+    public int getMoney() { return money; }
+    public int getPlayerHealth() { return playerHealth; }
     
     public boolean spendResources(int flourCost, int sugarCost, int moneyCost) {
         if (flour >= flourCost && sugar >= sugarCost && money >= moneyCost) {
@@ -537,19 +510,35 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
         System.out.println("❌ Pas assez de ressources !");
         return false;
     }
+    
+    // === GETTERS FOR MAP/CAMERA ===
+    
+    public GameMap getGameMap() {
+        return gameMap;
+    }
+    
+    public CameraController getCameraController() {
+        return cameraController;
+    }
+    
+    public OrthographicCamera getMapCamera() {
+        return mapCamera;
+    }
 
     @Override
     public void resize(int width, int height) {
         viewport.update(width, height, true);
-        camera.position.set(320, 560, 0);
- camera.zoom = 2.0f; // Zoom arrière pour voir plus de la carte
-        camera.update();
-        System.out.println("🔄 GameScreen redimensionné : " + width + "x" + height);
+        camera.position.set(VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2, 0);
     }
 
     @Override
     public void show() {
         System.out.println("📺 GameScreen affiché - Le jeu commence !");
+        
+        // Re-register input processor when screen is shown
+        if (cameraController != null) {
+            Gdx.input.setInputProcessor(cameraController);
+        }
     }
 
     @Override
@@ -578,17 +567,20 @@ private Unit createEnemyFromSpawnPoint(SpawnPoint spawnPoint) {
         if (tiledMap != null) tiledMap.dispose();
         if (mapRenderer != null) mapRenderer.dispose();
         
-        // Nettoyer les icônes
         if (heartIcon != null) heartIcon.dispose();
         if (starIcon != null) starIcon.dispose();
         if (wheatIcon != null) wheatIcon.dispose();
         if (sugarIcon != null) sugarIcon.dispose();
         if (coinIcon != null) coinIcon.dispose();
         
-        // Arrêter la musique
         if (backgroundMusic != null) {
             backgroundMusic.stop();
             backgroundMusic.dispose();
+        }
+        
+        // Dispose map
+        if (mapRenderer != null) {
+            mapRenderer.dispose();
         }
         
         System.out.println("🗑️ GameScreen nettoyé");
