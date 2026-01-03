@@ -1,5 +1,7 @@
 package pastrydad.com.input;
 
+import java.util.List;
+
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -11,8 +13,6 @@ import pastrydad.com.combat.MovementSystem;
 import pastrydad.com.combat.UnitManager;
 import pastrydad.com.entities.Unit;
 import pastrydad.com.map.GameMap;
-
-import java.util.List;
 
 /**
  * Handles all game input for unit selection, movement, and combat.
@@ -62,6 +62,8 @@ public class GameInputProcessor implements InputProcessor {
             int tileY = (int) tilePos.y;
             
             System.out.println("🖱️ Left click at tile [" + tileX + ", " + tileY + "]");
+            System.out.println("   Camera zoom: " + camera.zoom);
+            System.out.println("   Camera position: [" + camera.position.x + ", " + camera.position.y + "]");
             
             // Check if clicked on a unit
             Unit clickedUnit = unitManager.getUnitAt(tileX, tileY);
@@ -222,11 +224,19 @@ public class GameInputProcessor implements InputProcessor {
     
     /**
      * Converts screen coordinates to tile coordinates
+     * FIXED: Now properly updates camera before unprojecting
      */
     private Vector2 screenToTile(int screenX, int screenY) {
+        // CRITICAL FIX: Update camera matrix before unprojecting
+        camera.update();
+        
+        // Convert screen coordinates to world coordinates
         Vector3 worldPos = camera.unproject(new Vector3(screenX, screenY, 0));
+        
+        // Convert world coordinates to tile coordinates
         int tileX = (int)(worldPos.x / gameMap.getTileWidth());
         int tileY = (int)(worldPos.y / gameMap.getTileHeight());
+        
         return new Vector2(tileX, tileY);
     }
     

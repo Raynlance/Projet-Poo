@@ -16,6 +16,7 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import pastrydad.com.GameMain;
 import pastrydad.com.buildings.BuildingManager;
+import pastrydad.com.buildings.BuildingPlacementSystem;
 import pastrydad.com.buildings.CommandCenter;
 import pastrydad.com.map.GameMap;
 import pastrydad.com.map.MapLoader;
@@ -65,6 +66,10 @@ public class GameScreen implements Screen {
     private ResourceManager resourceManager;
     private UnitFactory unitFactory;
     private CommandCenterUI commandCenterUI;
+    
+    // Building placement system (NEW)
+    private BuildingPlacementSystem buildingPlacementSystem;
+    private BuildingPlacementUI buildingPlacementUI;
     
     private static final float VIRTUAL_WIDTH = 800f;
     private static final float VIRTUAL_HEIGHT = 600f;
@@ -141,6 +146,19 @@ public class GameScreen implements Screen {
             // Create building manager with dependencies
             buildingManager = new BuildingManager(gameMap, resourceManager);
             
+            // Initialize building placement system (NEW)
+            buildingPlacementSystem = new BuildingPlacementSystem(
+                gameMap, 
+                buildingManager, 
+                resourceManager,
+                mapCamera
+            );
+            
+            buildingPlacementUI = new BuildingPlacementUI(
+                resourceManager,
+                buildingPlacementSystem
+            );
+            
             // Create unit factory
             unitFactory = new UnitFactory(unitManager, resourceManager, gameMap);
             
@@ -160,23 +178,53 @@ public class GameScreen implements Screen {
             gameInputProcessor = new GameInputProcessor(mapCamera, gameMap, unitManager, movementSystem, cameraController) {
                 @Override
                 public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-                    // Check if Co System.out.println("CLICK DETECTED - Button: " + button + " at screen [" + screenX + ", " + screenY + "]"); System.out.println("CLICK DETECTED - Button: " + button + " at screen [" + screenX + ", " + screenY + "]")mmand Center UI should handle the click first
                     System.out.println("CLICK DETECTED - Button: " + button + " at screen [" + screenX + ", " + screenY + "]");
-                    if (button == Input.Buttons.LEFT) {System.out.println("🔍 CommandCenterUI visible? " + commandCenterUI.isVisible());
+                    
+                    // PRIORITY 1: Building placement mode (NEW)
+                    if (buildingPlacementSystem.isInPlacementMode()) {
+                        if (button == Input.Buttons.LEFT) {
+                            // Try to place building
+                            boolean placed = buildingPlacementSystem.handlePlacementClick(screenX, screenY);
+                            return true; // Consume the click either way
+                        } else if (button == Input.Buttons.RIGHT) {
+                            // Cancel placement
+                            buildingPlacementSystem.cancelPlacement();
+                            return true;
+                        }
+                    }
+                    
+                    // PRIORITY 2: UI clicks
+                    if (button == Input.Buttons.LEFT) {
+                        System.out.println("🔍 CommandCenterUI visible? " + commandCenterUI.isVisible());
+                        
+                        // Check Command Center UI first
                         boolean uiHandled = commandCenterUI.handleClick(screenX, screenY, VIRTUAL_HEIGHT);
-                        System.out.println("🔍 UI handled click? " + uiHandled);
+                        System.out.println("🔍 CommandCenter UI handled click? " + uiHandled);
                         if (uiHandled) {
+                            return true; // UI consumed the click
+                        }
+                        
+                        // Check Building Placement UI (NEW)
+                        boolean buildUIHandled = buildingPlacementUI.handleClick(screenX, screenY, VIRTUAL_HEIGHT);
+                        System.out.println("🔍 Building UI handled click? " + buildUIHandled);
+                        if (buildUIHandled) {
                             return true; // UI consumed the click
                         }
                     }
                     
-                    // Otherwise, let normal game input handle it
+                    // PRIORITY 3: Normal game input (unit selection/movement)
                     return super.touchDown(screenX, screenY, pointer, button);
                 }
                 
                 @Override
                 public boolean mouseMoved(int screenX, int screenY) {
+                    // Update building placement preview (NEW)
+                    buildingPlacementSystem.updatePreviewPosition(screenX, screenY);
+                    
+                    // Update UI hover states
                     commandCenterUI.updateHover(screenX, screenY, VIRTUAL_HEIGHT);
+                    buildingPlacementUI.updateHover(screenX, screenY, VIRTUAL_HEIGHT);
+                    
                     return super.mouseMoved(screenX, screenY);
                 }
             };
@@ -220,6 +268,7 @@ public class GameScreen implements Screen {
         System.out.println("   - Left Click: Select/Move/Attack units");
         System.out.println("   - T/Enter: End turn");
         System.out.println("   - C: Toggle Command Center UI");
+        System.out.println("   - B: Toggle Building Menu");
         System.out.println("   - Space/ESC: Deselect unit or return to menu");
     }
     
@@ -295,6 +344,18 @@ public class GameScreen implements Screen {
             buildingManager.render(batch);
             batch.end();
             
+            // Render building placement preview and available spots (NEW)
+            if (buildingPlacementSystem.isInPlacementMode()) {
+                batch.setProjectionMatrix(mapCamera.combined);
+                shapeRenderer.setProjectionMatrix(mapCamera.combined);
+                
+                // Highlight available building spots
+                buildingPlacementSystem.renderAvailableSpots(shapeRenderer);
+                
+                // Render placement preview
+                buildingPlacementSystem.renderPreview(batch, shapeRenderer);
+            }
+            
             // Render selection highlight
             renderSelectionHighlight();
         }
@@ -308,6 +369,9 @@ public class GameScreen implements Screen {
         
         // Render Command Center UI (on top of everything)
         commandCenterUI.render(batch, shapeRenderer);
+        
+        // Render Building Placement UI (on top of everything) (NEW)
+        buildingPlacementUI.render(batch, shapeRenderer);
     }
     
     private void updateHealthBar() {
@@ -339,16 +403,26 @@ public class GameScreen implements Screen {
     }
     
     private void handleInput() {
+        // Toggle Building Menu with B key (NEW)
+        if (Gdx.input.isKeyJustPressed(Input.Keys.B)) {
+            buildingPlacementUI.toggle();
+            System.out.println("🏗️ Building menu toggled - visible: " + buildingPlacementUI.isVisible());
+        }
+        
         // Toggle Command Center UI with C key
         if (Gdx.input.isKeyJustPressed(Input.Keys.C)) {
             commandCenterUI.toggle();
             System.out.println("🏗️ Command Center UI toggled");
         }
         
-        // ESC now handled by GameInputProcessor to deselect units
-        // Only return to menu if no unit is selected
+        // ESC - Updated to handle placement cancellation first (MODIFIED)
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            if (gameInputProcessor != null && gameInputProcessor.getSelectedUnit() == null) {
+            // First priority: Cancel building placement
+            if (buildingPlacementSystem.isInPlacementMode()) {
+                buildingPlacementSystem.cancelPlacement();
+            }
+            // Second priority: Deselect unit
+            else if (gameInputProcessor != null && gameInputProcessor.getSelectedUnit() == null) {
                 System.out.println("🔙 Retour au menu...");
                 game.setScreen(new MenuScreen(game));
             }
@@ -611,6 +685,7 @@ public class GameScreen implements Screen {
         System.out.println("⚔️ Combat: Left-click enemy to attack (when in range)");
         System.out.println("⌨️ T/Enter: End turn, Space/ESC: Deselect unit");
         System.out.println("🏗️ C: Toggle Command Center UI");
+        System.out.println("🏗️ B: Toggle Building Menu");
         
         // Re-register input processor when screen is shown
         if (cameraController != null && gameInputProcessor != null) {
@@ -669,6 +744,11 @@ public class GameScreen implements Screen {
         // Dispose Command Center UI
         if (commandCenterUI != null) {
             commandCenterUI.dispose();
+        }
+        
+        // Dispose Building Placement UI (NEW)
+        if (buildingPlacementUI != null) {
+            buildingPlacementUI.dispose();
         }
         
         if (resourceManager != null) {
