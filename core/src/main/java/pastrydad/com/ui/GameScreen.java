@@ -74,20 +74,16 @@ public class GameScreen implements Screen {
     private static final float VIRTUAL_WIDTH = 800f;
     private static final float VIRTUAL_HEIGHT = 600f;
     
-    // HUD 
-    private int playerHealth = 100;
-    private int maxHealth = 100;
-    private int score = 0;
-    private int flour = 50;      
-    private int sugar = 30;      
-    private int money = 100;     
+   
+      
     
     // HUD icons
-    private Texture heartIcon;
     private Texture starIcon;
     private Texture wheatIcon;
     private Texture sugarIcon;
     private Texture coinIcon;
+    private Texture woodIcon;    
+    private Texture stoneIcon;
     private boolean useIcons = false;
     
     // Music
@@ -174,6 +170,7 @@ public class GameScreen implements Screen {
             spawnManager = new SpawnManager(gameMap, unitManager);
             turnManager = new TurnManager(unitManager, enemyAI);
             turnManager.setSpawnManager(spawnManager);
+            turnManager.setBuildingManager(buildingManager); 
             
             gameInputProcessor = new GameInputProcessor(mapCamera, gameMap, unitManager, movementSystem, cameraController) {
                 @Override
@@ -183,7 +180,7 @@ public class GameScreen implements Screen {
                     // PRIORITY 1: Building placement mode
                     if (buildingPlacementSystem.isInPlacementMode()) {
                         if (button == Input.Buttons.LEFT) {
-                            boolean placed = buildingPlacementSystem.handlePlacementClick(screenX, screenY);
+                            buildingPlacementSystem.handlePlacementClick(screenX, screenY);
                             return true;
                         } else if (button == Input.Buttons.RIGHT) {
                             buildingPlacementSystem.cancelPlacement();
@@ -265,11 +262,13 @@ public class GameScreen implements Screen {
     
     private void loadIcons() {
         try {
-            heartIcon = new Texture(Gdx.files.internal("ui/icons/heart.png"));
+    
             starIcon = new Texture(Gdx.files.internal("ui/icons/star.png"));
             wheatIcon = new Texture(Gdx.files.internal("ui/icons/wheat.png"));
             sugarIcon = new Texture(Gdx.files.internal("ui/icons/sugar.png"));
             coinIcon = new Texture(Gdx.files.internal("ui/icons/coin.png"));
+            woodIcon = new Texture(Gdx.files.internal("ui/icons/wood.png"));    
+            stoneIcon = new Texture(Gdx.files.internal("ui/icons/stone.png"));  
             useIcons = true;
             System.out.println("✅ Icônes HUD chargées !");
         } catch (Exception e) {
@@ -282,7 +281,7 @@ public class GameScreen implements Screen {
         try {
             backgroundMusic = Gdx.audio.newMusic(Gdx.files.internal("music/game.mp3"));
             backgroundMusic.setLooping(true);
-            backgroundMusic.setVolume(1.0f);
+            backgroundMusic.setVolume(0.3f);
             backgroundMusic.play();
             System.out.println("🎵 Musique de jeu lancée !");
         } catch (Exception e) {
@@ -346,27 +345,7 @@ public class GameScreen implements Screen {
         buildingPlacementUI.render(batch, shapeRenderer);
     }
     
-    private void updateHealthBar() {
-        if (unitManager == null) return;
-        List<Unit> playerUnits = unitManager.getAlivePlayerUnits();
-        System.out.println("🔍 Health update: " + playerUnits.size() + " unités vivantes");
-        if (playerUnits.isEmpty()) {
-            playerHealth = 0;
-            maxHealth = 100;
-            return;
-        }
-        
-        int totalHealth = 0;
-        int totalMaxHealth = 0;
-        
-        for (Unit unit : playerUnits) {
-            totalHealth += unit.getHp();
-            totalMaxHealth += unit.getMaxHp();
-        }
-        
-        playerHealth = totalHealth;
-        maxHealth = totalMaxHealth;
-    }
+    
 
     private void update(float delta) {
         // Update Command Center UI (handles keyboard input for unit spawning)
@@ -401,16 +380,7 @@ public class GameScreen implements Screen {
             }
         }
         
-        // Test keys
-        if (Gdx.input.isKeyJustPressed(Input.Keys.H)) {
-            playerHealth = Math.max(0, playerHealth - 10);
-            System.out.println("❤️ Vie : " + playerHealth);
-        }
-        
-        if (Gdx.input.isKeyJustPressed(Input.Keys.J)) {
-            playerHealth = Math.min(maxHealth, playerHealth + 10);
-            System.out.println("💚 Vie : " + playerHealth);
-        }
+    
         
         // Reset camera (R key)
         if (Gdx.input.isKeyJustPressed(Input.Keys.R) && cameraController != null) {
@@ -481,139 +451,101 @@ public class GameScreen implements Screen {
             shapeRenderer.end();
         }
     }
-    
     private void drawHUD() {
-        float hudHeight = 80f;
+        float hudHeight = 60f;
         
+        // Draw HUD background panel
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        
         shapeRenderer.setColor(hudBorderColor);
         shapeRenderer.rect(0, VIRTUAL_HEIGHT - hudHeight, VIRTUAL_WIDTH, hudHeight);
-        
         shapeRenderer.setColor(hudBgColor);
         shapeRenderer.rect(4, VIRTUAL_HEIGHT - (hudHeight - 4), VIRTUAL_WIDTH - 8, hudHeight - 8);
-        
         shapeRenderer.end();
-        
-        float healthBarX = 90;
-        float healthBarY = VIRTUAL_HEIGHT - 50;
-        float healthBarWidth = 180;
-        float healthBarHeight = 20;
         
         batch.begin();
         
-        if (useIcons && heartIcon != null) {
-            batch.draw(heartIcon, healthBarX - 35, healthBarY - 5, 32, 32);
+        float resourceY = VIRTUAL_HEIGHT - 30;
+        float iconSize = 28f;
+        float spacing = 120f; // Espacement entre les ressources
+        
+        // Calculer la position de départ pour centrer les 4 ressources
+        float totalWidth = spacing * 3; // 4 ressources = 3 espacements
+        float startX = (VIRTUAL_WIDTH - totalWidth) / 2;
+        
+        // GOLD (Or) - coin.png
+        float goldX = startX;
+        if (useIcons && coinIcon != null) {
+            batch.draw(coinIcon, goldX, resourceY - 12, iconSize, iconSize);
+            hudFont.setColor(new Color(1f, 0.84f, 0f, 1f));
+            String goldText = String.valueOf(resourceManager.get(ResourceType.GOLD));
+            hudFont.draw(batch, goldText, goldX + 32, resourceY + 8);
         } else {
-            hudFont.setColor(new Color(1f, 0.2f, 0.4f, 1f));
-            hudFont.draw(batch, "♥", healthBarX - 45, healthBarY + 22);
+            hudFont.setColor(new Color(1f, 0.84f, 0f, 1f));
+            String goldText = "💰 " + resourceManager.get(ResourceType.GOLD);
+            hudFont.draw(batch, goldText, goldX, resourceY + 8);
         }
         
-        batch.end();
+        // WOOD (Bois) - wood.png ✅
+        float woodX = startX + spacing;
+        if (useIcons && woodIcon != null) {
+            batch.draw(woodIcon, woodX, resourceY - 12, iconSize, iconSize);
+            hudFont.setColor(new Color(0.6f, 0.3f, 0.1f, 1f));
+            String woodText = String.valueOf(resourceManager.get(ResourceType.WOOD));
+            hudFont.draw(batch, woodText, woodX + 32, resourceY + 8);
+        } else {
+            hudFont.setColor(new Color(0.6f, 0.3f, 0.1f, 1f));
+            String woodText = "🪵 " + resourceManager.get(ResourceType.WOOD);
+            hudFont.draw(batch, woodText, woodX, resourceY + 8);
+        }
         
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        // FOOD (Nourriture) - sugar.png (puisque c'est un jeu de pâtisserie!) ✅
+        float foodX = startX + spacing * 2;
+        if (useIcons && sugarIcon != null) {
+            batch.draw(sugarIcon, foodX, resourceY - 12, iconSize, iconSize);
+            hudFont.setColor(new Color(1f, 0.7f, 0.9f, 1f));
+            String foodText = String.valueOf(resourceManager.get(ResourceType.FOOD));
+            hudFont.draw(batch, foodText, foodX + 32, resourceY + 8);
+        } else {
+            hudFont.setColor(new Color(0.95f, 0.85f, 0.5f, 1f));
+            String foodText = "🌾 " + resourceManager.get(ResourceType.FOOD);
+            hudFont.draw(batch, foodText, foodX, resourceY + 8);
+        }
         
-        shapeRenderer.setColor(hudBorderColor);
-        shapeRenderer.rect(healthBarX - 2, healthBarY - 2, healthBarWidth + 4, healthBarHeight + 4);
+        // STONE (Pierre) - stone.png ✅
+        float stoneX = startX + spacing * 3;
+        if (useIcons && stoneIcon != null) {
+            batch.draw(stoneIcon, stoneX, resourceY - 12, iconSize, iconSize);
+            hudFont.setColor(new Color(0.7f, 0.7f, 0.7f, 1f));
+            String stoneText = String.valueOf(resourceManager.get(ResourceType.STONE));
+            hudFont.draw(batch, stoneText, stoneX + 32, resourceY + 8);
+        } else {
+            hudFont.setColor(new Color(0.7f, 0.7f, 0.7f, 1f));
+            String stoneText = "🪨 " + resourceManager.get(ResourceType.STONE);
+            hudFont.draw(batch, stoneText, stoneX, resourceY + 8);
+        }
         
-        shapeRenderer.setColor(healthBgColor);
-        shapeRenderer.rect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
-        
-        float healthPercent = (float) playerHealth / maxHealth;
-        shapeRenderer.setColor(healthColor);
-        shapeRenderer.rect(healthBarX, healthBarY, healthBarWidth * healthPercent, healthBarHeight);
-        
-        shapeRenderer.end();
-        
-        batch.begin();
-        
-        hudFont.setColor(Color.WHITE);
-        String healthText = playerHealth + "/" + maxHealth;
-        hudFont.draw(batch, healthText, healthBarX + 45, healthBarY + 18);
-        
-        float scoreX = 280;
-        float scoreY = VIRTUAL_HEIGHT - 30;
-        
+        // Score dans le coin gauche - star.png ✅
+        float scoreX = 20;
         if (useIcons && starIcon != null) {
-            batch.draw(starIcon, scoreX - 5, scoreY - 20, 28, 28);
+            batch.draw(starIcon, scoreX, resourceY - 12, 24, 24);
+            hudFont.setColor(new Color(1f, 0.8f, 0.2f, 1f));
+            hudFont.draw(batch, String.valueOf(unitManager.getPlayerScore()), scoreX + 28, resourceY + 8);
         } else {
             hudFont.setColor(new Color(1f, 0.8f, 0.2f, 1f));
-            hudFont.draw(batch, "★", scoreX, scoreY);
+            hudFont.draw(batch, "⭐ " + unitManager.getPlayerScore(), scoreX, resourceY + 8);
         }
-        
-        hudFont.setColor(new Color(0.7f, 0.5f, 0.8f, 1f));
-        hudFont.draw(batch, "Score:", scoreX + 30, scoreY);
-        hudFont.setColor(Color.WHITE);
-        hudFont.draw(batch, String.valueOf(score), scoreX + 120, scoreY);
-        
-        float iconSize = 24f;
-        float resourceY = VIRTUAL_HEIGHT - 30;
-        
-        float flourX = 430;
-        if (useIcons && wheatIcon != null) {
-            batch.draw(wheatIcon, flourX, resourceY - 18, iconSize, iconSize);
-        }
-        hudFont.setColor(new Color(0.95f, 0.85f, 0.5f, 1f));
-        hudFont.draw(batch, String.valueOf(flour), flourX + 30, resourceY);
-        
-        float sugarX = 520;
-        if (useIcons && sugarIcon != null) {
-            batch.draw(sugarIcon, sugarX, resourceY - 18, iconSize, iconSize);
-        }
-        hudFont.setColor(new Color(1f, 0.7f, 0.9f, 1f));
-        hudFont.draw(batch, String.valueOf(sugar), sugarX + 30, resourceY);
-        
-        float moneyX = 610;
-        if (useIcons && coinIcon != null) {
-            batch.draw(coinIcon, moneyX, resourceY - 18, iconSize, iconSize);
-        }
-        hudFont.setColor(new Color(0.4f, 1f, 0.4f, 1f));
-        hudFont.draw(batch, String.valueOf(money) + "$", moneyX + 30, resourceY);
         
         batch.end();
     }
     
-    // PUBLIC METHODS FOR GAME LOGIC
     
-    public void setPlayerHealth(int health) {
-        this.playerHealth = Math.max(0, Math.min(maxHealth, health));
+    
+    
+    public ResourceManager getResourceManager() {
+        return resourceManager;
     }
+
     
-    public void damage(int amount) {
-        this.playerHealth = Math.max(0, playerHealth - amount);
-        System.out.println("💔 Dégâts : -" + amount + " HP (Vie : " + playerHealth + ")");
-    }
-    
-    public void heal(int amount) {
-        this.playerHealth = Math.min(maxHealth, playerHealth + amount);
-        System.out.println("💚 Soins : +" + amount + " HP (Vie : " + playerHealth + ")");
-    }
-    
-    public void addScore(int points) {
-        this.score += points;
-        System.out.println("🎯 Score : +" + points + " (Total : " + score + ")");
-    }
-    
-    public void addFlour(int amount) { this.flour += amount; }
-    public void addSugar(int amount) { this.sugar += amount; }
-    public void addMoney(int amount) { this.money += amount; }
-    
-    public int getFlour() { return flour; }
-    public int getSugar() { return sugar; }
-    public int getMoney() { return money; }
-    public int getPlayerHealth() { return playerHealth; }
-    
-    public boolean spendResources(int flourCost, int sugarCost, int moneyCost) {
-        if (flour >= flourCost && sugar >= sugarCost && money >= moneyCost) {
-            flour -= flourCost;
-            sugar -= sugarCost;
-            money -= moneyCost;
-            System.out.println("💸 Dépensé : " + flourCost + " farine, " + sugarCost + " sucre, " + moneyCost + "$");
-            return true;
-        }
-        System.out.println("❌ Pas assez de ressources !");
-        return false;
-    }
     
     public GameMap getGameMap() {
         return gameMap;
@@ -676,12 +608,13 @@ public class GameScreen implements Screen {
         hudFont.dispose();
         shapeRenderer.dispose();
         
-        if (heartIcon != null) heartIcon.dispose();
         if (starIcon != null) starIcon.dispose();
         if (wheatIcon != null) wheatIcon.dispose();
         if (sugarIcon != null) sugarIcon.dispose();
         if (coinIcon != null) coinIcon.dispose();
-        
+        if (woodIcon != null) woodIcon.dispose();   
+        if (stoneIcon != null) stoneIcon.dispose();
+
         if (backgroundMusic != null) {
             backgroundMusic.stop();
             backgroundMusic.dispose();

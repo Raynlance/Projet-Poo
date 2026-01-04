@@ -20,11 +20,15 @@ public class UnitManager {
     private List<Unit> playerUnits;
     // Liste des unités ennemies 
     private List<Unit> enemyUnits;
-   // Unité actuellement sélectionnée 
+    // Unité actuellement sélectionnée 
     private Unit selectedUnit;
-   // Système de combat 
+    // Système de combat 
     private CombatSystem combatSystem;
     private GameMap gameMap;
+    
+    // ✅ SCORE SYSTEM
+    private int playerScore;
+    private static final int SCORE_PER_KILL = 50;  // Points par ennemi tué
     
     public UnitManager(GameMap gameMap) {
         this.gameMap = gameMap;
@@ -33,6 +37,7 @@ public class UnitManager {
         this.enemyUnits = new ArrayList<>();
         this.combatSystem = new CombatSystem();
         this.selectedUnit = null;
+        this.playerScore = 0;  // ✅ Initialiser le score
     }
     
     //creation des unite
@@ -52,14 +57,13 @@ public class UnitManager {
     }
     
     //Crée une girafe rouleau a patisserie
-      public RollingPinGiraffe createRollingPinGiraffe(int tileX, int tileY, boolean isPlayer) {
+    public RollingPinGiraffe createRollingPinGiraffe(int tileX, int tileY, boolean isPlayer) {
         RollingPinGiraffe unit = new RollingPinGiraffe(tileX, tileY, isPlayer);
         addUnit(unit);
         return unit;
     }
     
     // Ajoute une unité aux listes
-     
     private void addUnit(Unit unit) {
         allUnits.add(unit);
         
@@ -89,12 +93,17 @@ public class UnitManager {
     }
     
     // Nettoie toutes les unités mortes
-     
     public void cleanupDeadUnits() {
         Iterator<Unit> iterator = allUnits.iterator();
         while (iterator.hasNext()) {
             Unit unit = iterator.next();
             if (!unit.isAlive()) {
+                // ✅ AJOUTER DES POINTS SI C'EST UN ENNEMI TUÉ
+                if (!unit.isPlayerUnit()) {
+                    playerScore += SCORE_PER_KILL;
+                    System.out.println("🎯 Ennemi tué! +" + SCORE_PER_KILL + " points (Total: " + playerScore + ")");
+                }
+                
                 iterator.remove();
                 playerUnits.remove(unit);
                 enemyUnits.remove(unit);
@@ -109,7 +118,6 @@ public class UnitManager {
     }
         
     //Sélectionne une unité
-     
     public void selectUnit(Unit unit) {
         // Désélectionner l'ancienne unité
         if (selectedUnit != null) {
@@ -124,7 +132,6 @@ public class UnitManager {
     }
     
     //Désélectionne l'unité actuelle
-    
     public void deselectUnit() {
         if (selectedUnit != null) {
             selectedUnit.setSelected(false);
@@ -157,7 +164,7 @@ public class UnitManager {
     }
     
     // Exécute un combat entre deux unités 
-    public CombatResult executeCombat(Unit attacker,Unit target) {
+    public CombatResult executeCombat(Unit attacker, Unit target) {
         return combatSystem.executeCombat(attacker, target);
     }
         
@@ -185,7 +192,7 @@ public class UnitManager {
     
     // Dessine toutes les unités
     public void renderAll(SpriteBatch batch) {
-      // Dessiner d'abord les unités non sélectionnées
+        // Dessiner d'abord les unités non sélectionnées
         for (Unit unit : allUnits) {
             if (!unit.isSelected()) {
                 unit.render(batch, gameMap);
@@ -206,6 +213,20 @@ public class UnitManager {
         allUnits.clear();
         playerUnits.clear();
         enemyUnits.clear();
+    }
+    
+    // ✅ SCORE GETTERS
+    public int getPlayerScore() {
+        return playerScore;
+    }
+    
+    public void addScore(int points) {
+        playerScore += points;
+        System.out.println("🎯 +" + points + " points! (Total: " + playerScore + ")");
+    }
+    
+    public void resetScore() {
+        playerScore = 0;
     }
     
     //getters
@@ -235,7 +256,7 @@ public class UnitManager {
     public CombatSystem getCombatSystem() {
         return combatSystem;
     }
-     public GameMap getGameMap() {
+    public GameMap getGameMap() {
         return gameMap;
     }
     
@@ -258,5 +279,4 @@ public class UnitManager {
     public boolean hasPlayerLost() {
         return getPlayerUnitCount() == 0 && getEnemyUnitCount() > 0;
     }
-
 }

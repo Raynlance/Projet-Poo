@@ -1,7 +1,8 @@
-
 package pastrydad.com.combat;
 
 import pastrydad.com.map.SpawnManager;
+import pastrydad.com.buildings.BuildingManager;
+
 public class TurnManager {
     
     private boolean isPlayerTurn;
@@ -9,6 +10,7 @@ public class TurnManager {
     private UnitManager unitManager;
     private EnemyAI enemyAI;
     private SpawnManager spawnManager;
+    private BuildingManager buildingManager;  
     
     public TurnManager(UnitManager unitManager, EnemyAI enemyAI) {
         this.unitManager = unitManager;
@@ -16,14 +18,27 @@ public class TurnManager {
         this.isPlayerTurn = true;
         this.turnNumber = 1;
     }
+    
     public void setSpawnManager(SpawnManager spawnManager) {
         this.spawnManager = spawnManager;
+    }
+    
+    // ✅ NOUVELLE MÉTHODE
+    public void setBuildingManager(BuildingManager buildingManager) {
+        this.buildingManager = buildingManager;
     }
     
     public void endPlayerTurn() {
         if (!isPlayerTurn) return;
         
         System.out.println("\n=== FIN DU TOUR JOUEUR ===");
+        
+        // ✅ GÉNÉRER LES RESSOURCES DES BUILDINGS
+        if (buildingManager != null) {
+            buildingManager.processTurn();
+            System.out.println("🏭 Buildings ont produit des ressources!");
+        }
+        
         isPlayerTurn = false;
         
         // Réinitialiser les unités joueur pour le prochain tour
@@ -38,10 +53,12 @@ public class TurnManager {
         
         // Réinitialiser les unités ennemies
         unitManager.resetEnemyUnits();
+        
         // Spawner de nouveaux ennemis
         if (spawnManager != null) {
-        spawnManager.onEnemyTurn(turnNumber);
-         }
+            spawnManager.onEnemyTurn(turnNumber);
+        }
+        
         // L'IA joue
         enemyAI.executeTurn();
         

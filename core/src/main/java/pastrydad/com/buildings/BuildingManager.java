@@ -63,20 +63,32 @@ public class BuildingManager {
     }
     
     /**
-     * Update all buildings (production, construction, etc.)
+     * ✅ NOUVELLE MÉTHODE - Called once per turn to produce resources
      */
-    public void update(float delta) {
+    public void processTurn() {
+        System.out.println("🏭 Processing building production...");
+        
         for (Building building : buildings) {
             // Progress construction
             if (!building.isConstructed()) {
                 building.buildStep();
             }
             
-            // Production on turn (if needed)
+            // Produce resources if constructed
             if (building.isConstructed()) {
                 building.onTurn(resourceManager);
+                System.out.println("   ✅ " + building.getName() + " produced resources");
             }
         }
+    }
+    
+    /**
+     * Update all buildings (for animations, visual effects, etc.)
+     * This is called every frame, NOT for production
+     */
+    public void update(float delta) {
+        // This method can be used for animations or other per-frame updates
+        // Production is now handled in processTurn() called by TurnManager
     }
     
     /**
