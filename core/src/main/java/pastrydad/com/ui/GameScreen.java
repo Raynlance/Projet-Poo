@@ -202,7 +202,7 @@ public class GameScreen implements Screen {
                     return super.mouseMoved(screenX, screenY);
                 }
             };
-            
+            gameInputProcessor.setBuildingPlacement(buildingPlacementSystem, buildingPlacementUI);
             // Setup input multiplexer to handle both camera and game input
             InputMultiplexer multiplexer = new InputMultiplexer();
             multiplexer.addProcessor(gameInputProcessor);

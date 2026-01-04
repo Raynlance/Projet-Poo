@@ -33,6 +33,7 @@ public class BuildingPlacementUI {
     // Building buttons
     private Rectangle[] buildingButtons;
     private String[] buildingTypes;
+    private String[] buildingKeys; // Keyboard shortcuts
     private int hoveredButton = -1;
     
     // Colors
@@ -41,6 +42,7 @@ public class BuildingPlacementUI {
     private Color buttonColor = new Color(0.4f, 0.3f, 0.5f, 1f);
     private Color buttonHoverColor = new Color(0.6f, 0.4f, 0.7f, 1f);
     private Color buttonDisabledColor = new Color(0.3f, 0.25f, 0.35f, 1f);
+    private Color buttonActiveColor = new Color(0.2f, 0.8f, 0.3f, 1f); // Green when selected
     
     public BuildingPlacementUI(ResourceManager resourceManager, 
                                BuildingPlacementSystem placementSystem) {
@@ -54,8 +56,9 @@ public class BuildingPlacementUI {
         smallFont = new BitmapFont();
         smallFont.getData().setScale(1.2f);
         
-        // Get building types - hardcoded for now
+        // Get building types with keyboard shortcuts
         buildingTypes = new String[]{"Farm", "Mine", "Sawmill"};
+        buildingKeys = new String[]{"F", "M", "S"};
         
         // Create buttons
         buildingButtons = new Rectangle[buildingTypes.length];
@@ -83,6 +86,19 @@ public class BuildingPlacementUI {
     
     public boolean isVisible() {
         return visible;
+    }
+    
+    /**
+     * Select building via keyboard shortcut
+     */
+    public void selectBuildingByKeyboard(String buildingType) {
+        // Check if player can afford
+        if (canAffordBuilding(buildingType)) {
+            placementSystem.startPlacement(buildingType);
+            System.out.println("⌨️🏗️ Keyboard selected: " + buildingType);
+        } else {
+            System.out.println("⌨️❌ Cannot afford " + buildingType);
+        }
     }
     
     /**
@@ -124,9 +140,9 @@ public class BuildingPlacementUI {
                 // Check if player can afford
                 if (canAffordBuilding(buildingType)) {
                     placementSystem.startPlacement(buildingType);
-                    System.out.println("🏗️ Selected building: " + buildingType);
+                    System.out.println("🖱️🏗️ Mouse selected: " + buildingType);
                 } else {
-                    System.out.println("❌ Cannot afford " + buildingType);
+                    System.out.println("🖱️❌ Cannot afford " + buildingType);
                 }
                 
                 return true;
@@ -193,10 +209,14 @@ public class BuildingPlacementUI {
             Rectangle button = buildingButtons[i];
             String buildingType = buildingTypes[i];
             boolean canAfford = canAffordBuilding(buildingType);
+            boolean isSelected = placementSystem.isInPlacementMode() && 
+                               buildingType.equals(placementSystem.getSelectedBuildingType());
             
             // Button color based on state
             if (!canAfford) {
                 shapeRenderer.setColor(buttonDisabledColor);
+            } else if (isSelected) {
+                shapeRenderer.setColor(buttonActiveColor); // Green when actively placing
             } else if (hoveredButton == i) {
                 shapeRenderer.setColor(buttonHoverColor);
             } else {
@@ -219,19 +239,30 @@ public class BuildingPlacementUI {
         for (int i = 0; i < buildingButtons.length; i++) {
             Rectangle button = buildingButtons[i];
             String buildingType = buildingTypes[i];
+            String keyboardKey = buildingKeys[i];
             Map<ResourceType, Integer> cost = getBuildingCost(buildingType);
             boolean canAfford = canAffordBuilding(buildingType);
+            boolean isSelected = placementSystem.isInPlacementMode() && 
+                               buildingType.equals(placementSystem.getSelectedBuildingType());
             
-            // Building name
+            // Building name with keyboard shortcut
             if (canAfford) {
                 font.setColor(Color.WHITE);
             } else {
                 font.setColor(Color.GRAY);
             }
-            font.draw(batch, buildingType, button.x + 10, button.y + button.height - 15);
+            
+            String buttonText = buildingType + " [" + keyboardKey + "]";
+            font.draw(batch, buttonText, button.x + 10, button.y + button.height - 15);
+            
+            // Show "ACTIVE" indicator if placing this building
+            if (isSelected) {
+                smallFont.setColor(Color.GREEN);
+                smallFont.draw(batch, "► PLACING", button.x + 10, button.y + button.height - 35);
+            }
             
             // Cost display
-            float costY = button.y + button.height - 40;
+            float costY = button.y + button.height - (isSelected ? 55 : 40);
             for (Map.Entry<ResourceType, Integer> entry : cost.entrySet()) {
                 ResourceType resource = entry.getKey();
                 int amount = entry.getValue();
@@ -252,7 +283,8 @@ public class BuildingPlacementUI {
         
         // Instructions at bottom
         smallFont.setColor(Color.LIGHT_GRAY);
-        smallFont.draw(batch, "Press B to toggle", PANEL_X + 10, PANEL_Y + 30);
+        smallFont.draw(batch, "Keyboard: F/M/S", PANEL_X + 10, PANEL_Y + 50);
+        smallFont.draw(batch, "Press B to toggle menu", PANEL_X + 10, PANEL_Y + 30);
         smallFont.draw(batch, "ESC to cancel placement", PANEL_X + 10, PANEL_Y + 10);
         
         batch.end();

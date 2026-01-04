@@ -13,9 +13,11 @@ import pastrydad.com.combat.MovementSystem;
 import pastrydad.com.combat.UnitManager;
 import pastrydad.com.entities.Unit;
 import pastrydad.com.map.GameMap;
+import pastrydad.com.buildings.BuildingPlacementSystem;
+import pastrydad.com.ui.BuildingPlacementUI;
 
 /**
- * Handles all game input for unit selection, movement, and combat.
+ * Handles all game input for unit selection, movement, combat, and building placement.
  * Works alongside CameraController for camera controls.
  */
 public class GameInputProcessor implements InputProcessor {
@@ -24,6 +26,10 @@ public class GameInputProcessor implements InputProcessor {
     private GameMap gameMap;
     private UnitManager unitManager;
     private MovementSystem movementSystem;
+    
+    // Building placement references
+    private BuildingPlacementSystem placementSystem;
+    private BuildingPlacementUI placementUI;
     
     // Currently selected unit
     private Unit selectedUnit = null;
@@ -45,6 +51,16 @@ public class GameInputProcessor implements InputProcessor {
         this.cameraController = cameraController;
     }
     
+    /**
+     * Set building placement references (called after construction)
+     */
+    public void setBuildingPlacement(BuildingPlacementSystem placementSystem, 
+                                     BuildingPlacementUI placementUI) {
+        this.placementSystem = placementSystem;
+        this.placementUI = placementUI;
+        System.out.println("✅ Building placement linked to input processor!");
+    }
+    
     @Override
     public boolean touchDown(int screenX, int screenY, int pointer, int button) {
         System.out.println("🖱️ CLICK DETECTED - Button: " + button + " at screen [" + screenX + ", " + screenY + "]");
@@ -55,8 +71,23 @@ public class GameInputProcessor implements InputProcessor {
             return false; // Pass to camera controller
         }
         
-        // Handle left click for unit selection/commands
+        // Handle left click
         if (button == Input.Buttons.LEFT) {
+            // Priority 1: Check if placement UI consumed the click (only if menu is visible)
+            if (placementUI != null && placementUI.isVisible() && 
+                placementUI.handleClick(screenX, screenY, camera.viewportHeight)) {
+                System.out.println("   → Click handled by BuildingPlacementUI");
+                return true;
+            }
+            
+            // Priority 2: Check if in building placement mode
+            if (placementSystem != null && placementSystem.isInPlacementMode()) {
+                boolean handled = placementSystem.handlePlacementClick(screenX, screenY);
+                System.out.println("   → Building placement: " + (handled ? "consumed" : "ignored"));
+                return handled;
+            }
+            
+            // Priority 3: Handle unit selection/movement
             Vector2 tilePos = screenToTile(screenX, screenY);
             int tileX = (int) tilePos.x;
             int tileY = (int) tilePos.y;
@@ -242,10 +273,47 @@ public class GameInputProcessor implements InputProcessor {
     
     @Override
     public boolean keyDown(int keycode) {
-        // Deselect unit with ESC or SPACE
-        if (keycode == Input.Keys.ESCAPE || keycode == Input.Keys.SPACE) {
+        // Handle ESC - cancel placement or deselect unit
+        if (keycode == Input.Keys.ESCAPE) {
+            // First priority: cancel building placement
+            if (placementSystem != null && placementSystem.isInPlacementMode()) {
+                placementSystem.cancelPlacement();
+                System.out.println("⌨️ ESC - Cancelled building placement");
+                return true;
+            }
+            // Second priority: deselect unit
             deselectUnit();
             return true;
+        }
+        
+        // Handle SPACE - deselect unit
+        if (keycode == Input.Keys.SPACE) {
+            deselectUnit();
+            return true;
+        }
+        
+        // Handle building shortcuts - M, S, F (ONLY if menu is visible!)
+        if (placementSystem != null && placementUI != null && placementUI.isVisible()) {
+            // M = Mine
+            if (keycode == Input.Keys.M) {
+                placementUI.selectBuildingByKeyboard("Mine");
+                System.out.println("⌨️ M pressed - Selected MINE");
+                return true;
+            }
+            
+            // S = Sawmill
+            if (keycode == Input.Keys.S) {
+                placementUI.selectBuildingByKeyboard("Sawmill");
+                System.out.println("⌨️ S pressed - Selected SAWMILL");
+                return true;
+            }
+            
+            // F = Farm
+            if (keycode == Input.Keys.F) {
+                placementUI.selectBuildingByKeyboard("Farm");
+                System.out.println("⌨️ F pressed - Selected FARM");
+                return true;
+            }
         }
         
         // End turn with ENTER or T
